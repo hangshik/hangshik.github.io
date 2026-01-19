@@ -51,7 +51,6 @@
       font-size: 24px;
     }
     .sub-menu {
-      list-style: decimal;
       padding: 1rem;
       background: #f1f3f5;
       border-radius: 8px;
@@ -61,9 +60,26 @@
     .sub-menu a {
       color: #333;
       text-decoration: none;
-      padding: 0.6rem 0.3rem;
+      padding: 0.4rem 0.2rem; /* 줄간격 */
       display: inline-block;
       transition: all 0.3s ease;
+    }
+
+    /* 2단 레이아웃 스타일 */
+    .game-list-container {
+      display: flex;
+      flex-direction: row; /* 가로 배치 */
+      gap: 0px; /* 좌우 단 사이 간격 */
+    }
+    .game-column {
+      flex: 1; /* 공간 균등 분할 */
+    }
+    
+    /* 좁은 화면 (500px 이하) 에서는 세로로 변경 */
+    @media (max-width: 500px) {
+      .game-list-container {
+        flex-direction: column;
+      }
     }
   </style>
 </head>
@@ -71,88 +87,102 @@
   <div class="main-content">
     <div class="logo"><em>MATH</em> HOMEPAGE</div>
 
+    <!-- 수학게임 (1~15 / 16~23) -->
     <a href="qr/0.png" class="main-menu-item">수학게임</a>
-    <ul class="sub-menu">
-      <!-- 1. <a href="mathgame/knights/">기사의 여행</a><br>
-      2. <a href="mathgame/Lights_on/">Lights on</a><br>
-      3. <a href="mathgame/Pi_game/">파이(π)게임</a><br>
-  	  4. <a href="mathgame/Pitime/">3.14초 맞추기</a><br>
-      5. <a href="mathgame/MerlinGame/">멀린게임</a><br>
-      6. <a href="mathgame/Magimixer/">매지믹서</a><br>
-      7. <a href="mathgame/MemoryGame/">메모리 게임</a><br>
-      8. <a href="mathgame/Baseball/">숫자 야구 게임</a><br>
-      9. <a href="mathgame/SlidingPuzzle/">슬라이딩 퍼즐</a><br>
-      10. <a href="mathgame/KhunPhaenPuzzle/">태국 탈출 퍼즐</a><br>
-      11. <a href="mathgame/RushHour/">러시아워</a><br>
-      12. <a href="mathgame/NoLeftTurnMaze/">좌회전 금지 미로</a><br>
-      13. <a href="mathgame/ShikakuPuzzle/">Shikaku(시카쿠) 퍼즐 (사각형 퍼즐)</a><br>
-      14. <a href="mathgame/Angle/">각도 맞추기</a><br>
-      15. <a href="mathgame/MirrorPuzzle/">거울퍼즐</a><br>
-	    16. <a href="mathgame/StringArt/">스트링아트</a><br>
-  	  17. <a href="mathgame/JumpMaze/">점프미로</a><br>
-	    18. <a href="mathgame/ScalePuzzle/">저울 퍼즐</a><br> -->
-      <a href="qr/1.png">1.</a>   <a href="mathgame/01_knights/">기사의 여행</a><br>
-      <a href="qr/2.png">2.</a>   <a href="mathgame/02_Lights_on/">Lights on</a><br>
-      <a href="qr/3.png">3.</a>   <a href="mathgame/03_Pi_game/">파이(π)게임</a><br>
-  	  <a href="qr/4.png">4.</a>   <a href="mathgame/04_Pitime/">3.14초 맞추기</a><br>
-      <a href="qr/5.png">5.</a>   <a href="mathgame/05_MerlinGame/">멀린게임</a><br>
-      <a href="qr/6.png">6.</a>   <a href="mathgame/06_Magimixer/">매지믹서</a><br>
-      <a href="qr/7.png">7.</a>   <a href="mathgame/07_MemoryGame/">메모리 게임</a><br>
-      <a href="qr/8.png">8.</a>   <a href="mathgame/08_Baseball/">숫자 야구 게임</a><br>
-      <a href="qr/9.png">9.</a>   <a href="mathgame/09_SlidingPuzzle/">슬라이딩 퍼즐</a><br>
-      <a href="qr/10.png">10.</a> <a href="mathgame/10_KhunPhaenPuzzle/">태국 탈출 퍼즐</a><br>
-      <a href="qr/11.png">11.</a> <a href="mathgame/11_RushHour/">러시아워</a><br>
-      <a href="qr/12.png">12.</a> <a href="mathgame/12_NoLeftTurnMaze/">좌회전 금지 미로</a><br>
-      <a href="qr/13.png">13.</a> <a href="mathgame/13_ShikakuPuzzle/">사각형 퍼즐</a><br>
-      <a href="qr/14.png">14.</a> <a href="mathgame/14_Angle/">각도 맞추기</a><br>
-      <a href="qr/15.png">15.</a> <a href="mathgame/15_MirrorPuzzle/">거울퍼즐</a><br>
-	    <a href="qr/16.png">16.</a> <a href="mathgame/16_StringArt/">스트링아트</a><br>
-  	  <a href="qr/17.png">17.</a> <a href="mathgame/17_JumpMaze/">점프미로</a><br>
-	    <a href="qr/18.png">18.</a> <a href="mathgame/18_ScalePuzzle/">저울 퍼즐</a><br>
-      <a href="qr/19.png">19.</a> <a href="mathgame/19_Calculator/">기묘한 계산기</a><br>
-      <a href="qr/20.png">20.</a> <a href="mathgame/20_Battleship/">전함 퍼즐</a><br>
-      <a href="qr/21.png">21.</a> <a href="mathgame/21_StarBattle/">스타 배틀</a><br>
-      <a href="qr/22.png">22.</a> <a href="mathgame/22_Nurikabe/">누리카베</a><br>
-      <a href="qr/23.png">23.</a> <a href="mathgame/23_MagicFill/">매직 필</a><br>
-	    
-    </ul>
+    <div class="sub-menu">
+      <div class="game-list-container">
+        <div class="game-column">
+          <a href="qr/1.png">1.</a>   <a href="mathgame/01_knights/">기사의 여행</a><br>
+          <a href="qr/2.png">2.</a>   <a href="mathgame/02_Lights_on/">Lights on</a><br>
+          <a href="qr/3.png">3.</a>   <a href="mathgame/03_Pi_game/">파이(π)게임</a><br>
+          <a href="qr/4.png">4.</a>   <a href="mathgame/04_Pitime/">3.14초 맞추기</a><br>
+          <a href="qr/5.png">5.</a>   <a href="mathgame/05_MerlinGame/">멀린게임</a><br>
+          <a href="qr/6.png">6.</a>   <a href="mathgame/06_Magimixer/">매지믹서</a><br>
+          <a href="qr/7.png">7.</a>   <a href="mathgame/07_MemoryGame/">메모리 게임</a><br>
+          <a href="qr/8.png">8.</a>   <a href="mathgame/08_Baseball/">숫자 야구 게임</a><br>
+          <a href="qr/9.png">9.</a>   <a href="mathgame/09_SlidingPuzzle/">슬라이딩 퍼즐</a><br>
+          <a href="qr/10.png">10.</a> <a href="mathgame/10_KhunPhaenPuzzle/">태국 탈출 퍼즐</a><br>
+          <a href="qr/11.png">11.</a> <a href="mathgame/11_RushHour/">러시아워</a><br>
+          <a href="qr/12.png">12.</a> <a href="mathgame/12_NoLeftTurnMaze/">좌회전 금지 미로</a><br>
+          <a href="qr/13.png">13.</a> <a href="mathgame/13_ShikakuPuzzle/">사각형 퍼즐</a><br>
+          <a href="qr/14.png">14.</a> <a href="mathgame/14_Angle/">각도 맞추기</a><br>
+          <a href="qr/15.png">15.</a> <a href="mathgame/15_MirrorPuzzle/">거울퍼즐</a><br>
+        </div>
+        <div class="game-column">
+          <a href="qr/16.png">16.</a> <a href="mathgame/16_StringArt/">스트링아트</a><br>
+          <a href="qr/17.png">17.</a> <a href="mathgame/17_JumpMaze/">점프미로</a><br>
+          <a href="qr/18.png">18.</a> <a href="mathgame/18_ScalePuzzle/">저울 퍼즐</a><br>
+          <a href="qr/19.png">19.</a> <a href="mathgame/19_Calculator/">기묘한 계산기</a><br>
+          <a href="qr/20.png">20.</a> <a href="mathgame/20_Battleship/">전함 퍼즐</a><br>
+          <a href="qr/21.png">21.</a> <a href="mathgame/21_StarBattle/">스타 배틀</a><br>
+          <a href="qr/22.png">22.</a> <a href="mathgame/22_Nurikabe/">누리카베</a><br>
+          <a href="qr/23.png">23.</a> <a href="mathgame/23_MagicFill/">매직 필</a><br>
+        </div>
+      </div>
+    </div>
     
-    <div class="main-menu-item">중1수학</div>
-    <ul class="sub-menu">
-      <!-- 1. <a href="mathgame/Divisor/">약수를 찾아라!</a><br>
-      2. <a href="math/112.html">정수 덧셈과 뺄셈</a><br>
-      3. <a href="math/122.html">일차방정식</a><br> -->
-      <a href="qr/m1-1.png">1.</a><a href="mathgame/Divisor/">약수를 찾아라!</a><br>
-      <a href="qr/m1-2.png">2.</a><a href="math/112.html">정수 덧셈과 뺄셈</a><br>
-      <a href="qr/m1-3.png">3.</a><a href="math/122.html">일차방정식</a><br>
-    </ul>
+    <div class="main-menu-item">중 1 수학</div>
+    <div class="sub-menu">
+      <div class="game-list-container">
+        <!-- 왼쪽: 1번 -->
+        <div class="game-column">
+          <a href="qr/m1-1.png">1.</a><a href="mathgame/Divisor/">약수를 찾아라!</a><br>
+          <a href="qr/m1-2.png">2.</a><a href="math/112.html">정수 덧셈과 뺄셈</a><br>
+        </div>
+        <!-- 오른쪽: 2번~ -->
+        <div class="game-column">
+          
+          <a href="qr/m1-3.png">3.</a><a href="math/122.html">일차방정식</a><br>
+        </div>
+      </div>
+    </div>
 
-    <div class="main-menu-item">중2수학</div>
-    <ul class="sub-menu">
-      <!-- 1. <a href="math/222.html">연립방정식</a><br> -->
-      <a href="qr/m2-1.png">1.</a><a href="math/222.html">연립방정식</a><br>
-    </ul>
+    <div class="main-menu-item">중 2 수학</div>
+    <div class="sub-menu">
+      <div class="game-list-container">
+        <!-- 왼쪽: 1번 -->
+        <div class="game-column">
+          <a href="qr/m2-1.png">1.</a><a href="math/222.html">연립방정식</a><br>
+        </div>
+        <!-- 오른쪽: 2번 -->
+        <div class="game-column">
+          
+        </div>
+      </div>
+    </div>
 	  
-    <div class="main-menu-item">중3수학</div>
-    <ul class="sub-menu">
-      <!-- 1. <a href="math/322.html">이차방정식</a><br> -->
-      <a href="qr/m3-1.png">1.</a><a href="math/322.html">이차방정식</a><br>
-    </ul>
+    <div class="main-menu-item">중 3 수학</div>
+    <div class="sub-menu">
+      <div class="game-list-container">
+        <!-- 왼쪽: 1번 -->
+        <div class="game-column">
+           <a href="qr/m3-1.png">1.</a><a href="math/322.html">이차방정식</a><br>
+        </div>
+        <!-- 오른쪽: 2번 -->
+        <div class="game-column">
+           
+        </div>
+      </div>
+    </div>
 	  
     <div class="main-menu-item">글로컬 미래교실 수업</div>
-    <ul class="sub-menu">
-      <!-- 1. <a href="Glocal/jn.html">전라남도 한붓그리기</a><br>
-      2. <a href="Glocal/jn_math-tour.html">전남 math-tour</a><br>
-      3. <a href="Glocal/">기사의 여행(좌표1)</a><br>
-      4. <a href="Glocal/index2.html">기사의 여행(좌표2)</a><br>    -->
-      <a href="qr/g1.png">1.</a><a href="Glocal/jn.html">전라남도 한붓그리기</a><br>
-      <a href="qr/g2.png">2.</a><a href="Glocal/jn_math-tour.html">전남 math-tour</a><br>
-      <a href="qr/g3.png">3.</a><a href="Glocal/">기사의 여행(좌표1)</a><br>
-      <a href="qr/g4.png">4.</a><a href="Glocal/index2.html">기사의 여행(좌표2)</a><br>      
-    </ul>
+    <div class="sub-menu">
+      <div class="game-list-container">
+        <!-- 왼쪽: 1번 -->
+        <div class="game-column">
+          <a href="qr/g1.png">1.</a><a href="Glocal/jn.html">전라남도 한붓그리기</a><br>
+          <a href="qr/g2.png">2.</a><a href="Glocal/jn_math-tour.html">전남 math-tour</a><br>
+        </div>
+        <!-- 오른쪽: 2번~ -->
+        <div class="game-column">
+          
+          <a href="qr/g3.png">3.</a><a href="Glocal/">기사의 여행(좌표1)</a><br>
+          <a href="qr/g4.png">4.</a><a href="Glocal/index2.html">기사의 여행(좌표2)</a><br>      
+        </div>
+      </div>
+    </div>
     
     <a href="EscapeRoom/" class="main-menu-item">관리자 모드</a>
-	<!--<a href="APP/" class="main-menu-item">앱인벤터</a>-->
   </div>
 
   <!-- Google tag (gtag.js) -->
@@ -177,14 +207,3 @@ wcs_do();
   
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
