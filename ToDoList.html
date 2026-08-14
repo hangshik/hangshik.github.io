@@ -74,7 +74,7 @@
         </button>
 
         <!-- Tabs Container -->
-        <div id="tabs-container" class="flex items-center space-x-1 overflow-x-auto no-scrollbar scroll-smooth px-2 py-0.5 flex-1">
+        <div id="tabs-container" class="flex items-center space-x-1 overflow-x-auto no-scrollbar scroll-smooth pl-0.5 pr-2 py-0.5 flex-1">
           <!-- Dynamic Tabs render here -->
         </div>
 
@@ -93,7 +93,7 @@
     </div>
 
     <!-- Main Todo Content Area -->
-    <div class="p-3 sm:p-4 flex-1 flex flex-col">
+    <div class="px-1.5 py-3 sm:px-2 sm:py-4 flex-1 flex flex-col">
       
       <!-- Input Section  (Ctrl+Enter: 등록, Esc: 내용 삭제)-->
       <div class="mb-2.5">
@@ -604,12 +604,10 @@
         const itemEl = document.createElement("div");
         
         if (item.isDivider) {
-          // 구분선일 때: 상하 간격 0, 영역 내 세로 중앙 정렬
-          itemEl.className = "group flex items-center gap-1.5 px-1.5 py-0 rounded-lg hover:bg-gray-100/70 transition relative h-5";
-        } else {
-          // 할 일 항목일 때
-          itemEl.className = "group flex items-start gap-1.5 px-1.5 py-0.5 rounded-lg hover:bg-gray-100/70 transition relative";
-        }
+  itemEl.className = "group flex items-center gap-1.5 pl-0 pr-1 py-0 rounded-lg hover:bg-gray-100/70 transition relative h-5";
+} else {
+  itemEl.className = "group flex items-start gap-1.5 pl-0 pr-1 py-0.5 rounded-lg hover:bg-gray-100/70 transition relative";
+}
         itemEl.draggable = true;
 
         itemEl.addEventListener("dragstart", (e) => {
@@ -672,8 +670,8 @@
           const checkboxBtn = document.createElement("button");
           checkboxBtn.className = "pt-0.5 text-gray-400 hover:text-blue-600 transition shrink-0";
           checkboxBtn.innerHTML = item.completed
-            ? `<i class="ph-fill ph-check-square text-lg text-blue-600"></i>`
-            : `<i class="ph ph-square text-lg"></i>`;
+            ? `<i class="ph-fill ph-check-square text-base text-blue-600"></i>`
+            : `<i class="ph ph-square text-base"></i>`;
           
           checkboxBtn.addEventListener("click", async () => {
             await update(ref(db, `todos/${item.id}`), {
