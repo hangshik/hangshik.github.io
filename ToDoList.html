@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
   <title>스마트 ToDo List</title>
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -19,10 +20,10 @@
     }
     /* Drag over highlight line for Todo items (Vertical) */
     .drag-line-top {
-      border-top: 3px solid #3b82f6 !important;
+      border-top: 2px solid #3b82f6 !important;
     }
     .drag-line-bottom {
-      border-bottom: 3px solid #3b82f6 !important;
+      border-bottom: 2px solid #3b82f6 !important;
     }
     /* Drag over highlight line for Tabs (Horizontal) */
     .drag-line-left {
@@ -33,20 +34,47 @@
     }
   </style>
 </head>
-<body class="bg-gray-100 min-h-screen text-gray-800 flex flex-col items-center p-3 sm:p-6">
+<body class="bg-gray-100 min-h-screen text-gray-800 flex flex-col items-center p-2 sm:p-5">
 
-  <div class="w-full max-w-2xl bg-white rounded-2xl shadow-xl overflow-hidden flex flex-col min-h-[600px]">
+  <!-- Password Access Lock Overlay -->
+  <div id="auth-overlay" class="fixed inset-0 bg-slate-900/90 backdrop-blur-md z-[100] flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl text-center">
+      <div class="w-12 h-12 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
+        <i class="ph ph-lock-key text-2xl"></i>
+      </div>
+      <h2 class="text-xl font-bold text-gray-900 mb-1">보안 접속</h2>
+      <p class="text-xs text-gray-500 mb-5">비밀번호를 입력해야 서비스에 접근할 수 있습니다.</p>
+      
+      <input 
+        type="password" 
+        id="auth-password-input" 
+        placeholder="비밀번호 입력" 
+        class="w-full p-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-center text-lg mb-2"
+      />
+      <p id="auth-error-msg" class="text-xs text-red-500 hidden mb-3">비밀번호가 올바르지 않습니다.</p>
+
+      <button 
+        id="auth-submit-btn" 
+        class="w-full py-3 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 transition active:scale-95 shadow-md"
+      >
+        확인
+      </button>
+    </div>
+  </div>
+
+  <!-- Main Content Wrapper -->
+  <div id="main-app" class="w-full max-w-2xl bg-white rounded-2xl shadow-xl overflow-hidden flex flex-col min-h-[600px] hidden">
     
     <!-- Tab Navigation Area -->
     <div class="border-b border-gray-200 bg-slate-50 relative">
-      <div class="flex items-center justify-between px-2 py-2">
+      <div class="flex items-center justify-between px-2 py-1.5">
         <!-- Left Scroll Button -->
         <button id="btn-scroll-left" class="p-1.5 text-gray-500 hover:text-gray-800 hover:bg-gray-200 rounded-lg hidden transition">
           <i class="ph ph-caret-left text-lg"></i>
         </button>
 
         <!-- Tabs Container -->
-        <div id="tabs-container" class="flex items-center space-x-1 overflow-x-auto no-scrollbar scroll-smooth px-2 py-1 flex-1">
+        <div id="tabs-container" class="flex items-center space-x-1 overflow-x-auto no-scrollbar scroll-smooth px-2 py-0.5 flex-1">
           <!-- Dynamic Tabs render here -->
         </div>
 
@@ -57,10 +85,10 @@
 
         <!-- Right Action Buttons -->
         <div class="flex items-center ml-2 space-x-1 shrink-0">
-          <button id="btn-add-tab" class="p-2 text-blue-600 hover:bg-blue-50 rounded-lg flex items-center justify-center transition" title="메뉴 추가">
+          <button id="btn-add-tab" class="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg flex items-center justify-center transition" title="메뉴 추가">
             <i class="ph ph-plus text-lg font-bold"></i>
           </button>
-          <button id="btn-delete-tab" class="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg flex items-center justify-center transition" title="현재 메뉴 삭제">
+          <button id="btn-delete-tab" class="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg flex items-center justify-center transition" title="현재 메뉴 삭제">
             <i class="ph ph-trash text-lg"></i>
           </button>
         </div>
@@ -68,20 +96,20 @@
     </div>
 
     <!-- Main Todo Content Area -->
-    <div class="p-3 sm:p-5 flex-1 flex flex-col">
+    <div class="p-3 sm:p-4 flex-1 flex flex-col">
       
       <!-- Input Section -->
-      <div class="mb-4">
+      <div class="mb-2.5">
         <div class="flex items-start gap-2">
           <textarea 
             id="todo-input" 
             rows="1" 
             placeholder="할 일을 입력하세요 (Enter로 줄바꿈 가능)..." 
-            class="flex-1 p-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none text-sm sm:text-base transition overflow-hidden min-h-[42px]"
+            class="flex-1 p-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none text-sm sm:text-base transition overflow-hidden min-h-[38px]"
           ></textarea>
           <button 
             id="btn-add-todo" 
-            class="px-5 py-2.5 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 active:scale-95 transition flex items-center justify-center shrink-0 shadow-md h-[42px]"
+            class="px-4 py-2 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 active:scale-95 transition flex items-center justify-center shrink-0 shadow-md h-[38px] text-sm sm:text-base"
           >
             등록
           </button>
@@ -89,15 +117,15 @@
       </div>
 
       <!-- Todo List Container -->
-      <div id="todo-list" class="space-y-0.5 flex-1">
+      <div id="todo-list" class="space-y-0 flex-1">
         <!-- Dynamic Todo items render here -->
       </div>
       
       <!-- 구분선 추가 버튼 -->
-      <div id="divider-btn-container" class="mt-3 flex justify-center hidden">
+      <div id="divider-btn-container" class="mt-2 flex justify-center hidden">
         <button 
           id="btn-add-divider" 
-          class="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-600 text-xs sm:text-sm rounded-lg transition flex items-center gap-1 border border-gray-300 shadow-sm"
+          class="px-2.5 py-1 bg-gray-100 hover:bg-gray-200 text-gray-600 text-xs rounded-lg transition flex items-center gap-1 border border-gray-300 shadow-sm"
         >
           <i class="ph ph-minus font-bold"></i> 구분선 추가
         </button>
@@ -142,6 +170,53 @@
       getDatabase, ref, push, set, onValue, update, remove 
     } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-database.js";
 
+    // 🔐 비밀번호 설정
+    const CORRECT_PASSWORD = "9859"; 
+
+    // Access Authentication Control
+    const authOverlay = document.getElementById("auth-overlay");
+    const mainApp = document.getElementById("main-app");
+    const authPasswordInput = document.getElementById("auth-password-input");
+    const authSubmitBtn = document.getElementById("auth-submit-btn");
+    const authErrorMsg = document.getElementById("auth-error-msg");
+    const todoInput = document.getElementById("todo-input");
+
+    function checkAuth() {
+      const isAuth = localStorage.getItem("app_authenticated");
+      if (isAuth === "true") {
+        authOverlay.classList.add("hidden");
+        mainApp.classList.remove("hidden");
+        setTimeout(() => todoInput.focus(), 50);
+        return true;
+      } else {
+        authOverlay.classList.remove("hidden");
+        mainApp.classList.add("hidden");
+        authPasswordInput.focus();
+        return false;
+      }
+    }
+
+    function handleAuthSubmit() {
+      const inputVal = authPasswordInput.value.trim();
+      if (inputVal === CORRECT_PASSWORD) {
+        localStorage.setItem("app_authenticated", "true");
+        authErrorMsg.classList.add("hidden");
+        checkAuth();
+      } else {
+        authErrorMsg.classList.remove("hidden");
+        authPasswordInput.value = "";
+        authPasswordInput.focus();
+      }
+    }
+
+    authSubmitBtn.addEventListener("click", handleAuthSubmit);
+    authPasswordInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") handleAuthSubmit();
+    });
+
+    // Run auth check on load
+    checkAuth();
+
     // Firebase Config
     const firebaseConfig = {
       apiKey: "AIzaSyBHFaa5cuyPWLt0I7uEw0nvo6wuoK5Xl0E",
@@ -172,7 +247,6 @@
     const btnScrollRight = document.getElementById("btn-scroll-right");
     const btnAddTab = document.getElementById("btn-add-tab");
     const btnDeleteTab = document.getElementById("btn-delete-tab");
-    const todoInput = document.getElementById("todo-input");
     const btnAddTodo = document.getElementById("btn-add-todo");
     const btnAddDivider = document.getElementById("btn-add-divider");
     const dividerBtnContainer = document.getElementById("divider-btn-container");
@@ -247,14 +321,14 @@
       renderTodos();
     });
 
-    // Render Tabs UI (메뉴 드래그 시 파란색 선 시각적 효과 포함)
+    // Render Tabs UI
     function renderTabs() {
       tabsContainer.innerHTML = "";
       
       tabs.forEach((tab, index) => {
         const isActive = tab.id === activeTabId;
         const tabEl = document.createElement("div");
-        tabEl.className = `flex items-center px-3.5 py-1.5 rounded-lg font-medium text-sm transition cursor-pointer select-none shrink-0 border border-transparent box-border ${
+        tabEl.className = `flex items-center px-3 py-1 rounded-lg font-medium text-xs sm:text-sm transition cursor-pointer select-none shrink-0 border border-transparent box-border ${
           isActive 
             ? "bg-blue-600 text-white shadow-sm" 
             : "bg-white text-gray-600 hover:bg-gray-100 hover:text-gray-900 border-gray-200"
@@ -266,7 +340,6 @@
           e.dataTransfer.effectAllowed = "move";
         });
 
-        // 탭 드래그 오버 시 마우스 위치에 따라 좌/우 파란선 표시
         tabEl.addEventListener("dragover", (e) => {
           e.preventDefault();
           const rect = tabEl.getBoundingClientRect();
@@ -284,7 +357,6 @@
           tabEl.classList.remove("drag-line-left", "drag-line-right");
         });
 
-        // 탭 드롭 시 파란선 방향을 고려하여 삽입 위치 결정
         tabEl.addEventListener("drop", async (e) => {
           e.preventDefault();
           const isLeft = tabEl.classList.contains("drag-line-left");
@@ -296,13 +368,9 @@
           const draggedTab = reordered[draggedTabIdx];
           const targetTab = reordered[index];
 
-          // 드래그된 탭 제거
           reordered.splice(draggedTabIdx, 1);
 
-          // 타겟 탭의 새로운 인덱스 찾기
           let insertIdx = reordered.findIndex(t => t.id === targetTab.id);
-          
-          // 타겟 탭의 오른쪽에 드롭되었다면, 인덱스를 1 증가시켜 뒤에 추가
           if (!isLeft) insertIdx += 1;
 
           reordered.splice(insertIdx, 0, draggedTab);
@@ -321,6 +389,7 @@
             renderTabs();
             renderTodos();
           }
+          todoInput.focus();
         });
 
         const titleSpan = document.createElement("span");
@@ -345,6 +414,7 @@
       addModal.classList.add("hidden");
       addModal.classList.remove("flex");
       tabNameInput.value = "";
+      todoInput.focus();
     }
 
     async function handleAddTab() {
@@ -389,6 +459,7 @@
       deleteModal.classList.add("hidden");
       deleteModal.classList.remove("flex");
       tabToDeleteId = null;
+      todoInput.focus();
     });
 
     modalConfirmBtn.addEventListener("click", async () => {
@@ -405,6 +476,7 @@
         deleteModal.classList.add("hidden");
         deleteModal.classList.remove("flex");
         tabToDeleteId = null;
+        todoInput.focus();
       }
     });
 
@@ -446,6 +518,8 @@
         order: newOrder,
         createdAt: Date.now()
       });
+      
+      todoInput.focus();
     }
 
     // Add Todo Button Click
@@ -468,11 +542,10 @@
       todoListContainer.innerHTML = "";
       const currentTodos = todos.filter(t => t.tabId === activeTabId);
 
-      // 할 일이 없으면 구분선 추가 버튼 숨기기
       if (currentTodos.length === 0) {
         dividerBtnContainer.classList.add("hidden");
         todoListContainer.innerHTML = `
-          <div class="text-center py-12 text-gray-400 text-sm">
+          <div class="text-center py-10 text-gray-400 text-xs sm:text-sm">
             등록된 할 일이 없습니다. 상단에서 내용을 입력해 보세요!
           </div>
         `;
@@ -483,7 +556,7 @@
 
       currentTodos.forEach((item) => {
         const itemEl = document.createElement("div");
-        itemEl.className = "group flex items-start gap-1.5 px-2 py-1 rounded-lg hover:bg-gray-50 transition relative";
+        itemEl.className = "group flex items-start gap-1.5 px-1.5 py-0.5 rounded-lg hover:bg-gray-100/70 transition relative";
         itemEl.draggable = true;
 
         itemEl.addEventListener("dragstart", (e) => {
@@ -536,16 +609,10 @@
           draggedTodoId = null;
         });
 
-        // Drag Handle Icon
-        const dragHandle = document.createElement("div");
-        dragHandle.className = "cursor-grab text-gray-300 hover:text-gray-500 pt-0.5 shrink-0 select-none";
-        dragHandle.innerHTML = `<i class="ph ph-dots-six-vertical text-base"></i>`;
-        itemEl.appendChild(dragHandle);
-
         if (item.isDivider) {
-          // Divider UI
+          // Divider
           const dividerContent = document.createElement("div");
-          dividerContent.className = "flex-1 my-auto border-b-2 border-gray-200 py-1.5";
+          dividerContent.className = "flex-1 my-1 border-b-2 border-gray-200/90";
           itemEl.appendChild(dividerContent);
         } else {
           // Checkbox
@@ -562,44 +629,36 @@
           });
           itemEl.appendChild(checkboxBtn);
 
-          // Todo Content (Click to Edit)
+          // Todo Content Container
           const textContainer = document.createElement("div");
           textContainer.className = "flex-1 min-w-0";
 
           const textEl = document.createElement("div");
-          textEl.className = `text-sm sm:text-base whitespace-pre-wrap break-words cursor-pointer py-0.5 ${
+          textEl.className = `text-sm sm:text-base whitespace-pre-wrap break-words cursor-pointer py-0.5 leading-snug ${
             item.completed ? "line-through text-gray-400" : "text-gray-800"
           }`;
           textEl.textContent = item.text;
 
-          // Inline Edit Mode
+          // Inline Edit Mode (버튼 없이 전체 내용 자동 높이 조절)
           textEl.addEventListener("click", () => {
-            const wrapper = document.createElement("div");
-            wrapper.className = "space-y-1.5 my-1";
-
             const editTextarea = document.createElement("textarea");
-            editTextarea.rows = Math.max(1, item.text.split('\n').length);
-            editTextarea.className = "w-full p-2 text-sm border border-blue-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 whitespace-pre-wrap resize-y";
+            editTextarea.className = "w-full p-1.5 text-sm sm:text-base border border-blue-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 whitespace-pre-wrap resize-none overflow-hidden leading-snug";
             editTextarea.value = item.text;
 
-            const btnRow = document.createElement("div");
-            btnRow.className = "flex justify-end gap-1.5";
+            // 내용 높이에 맞춰 입력창 크기 자동 조절 함수
+            const adjustHeight = () => {
+              editTextarea.style.height = "auto";
+              editTextarea.style.height = editTextarea.scrollHeight + "px";
+            };
 
-            const saveBtn = document.createElement("button");
-            saveBtn.className = "px-2.5 py-0.5 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition";
-            saveBtn.textContent = "저장";
-
-            const cancelBtn = document.createElement("button");
-            cancelBtn.className = "px-2.5 py-0.5 bg-gray-200 text-gray-700 text-xs rounded hover:bg-gray-300 transition";
-            cancelBtn.textContent = "취소";
-
-            btnRow.appendChild(cancelBtn);
-            btnRow.appendChild(saveBtn);
-            wrapper.appendChild(editTextarea);
-            wrapper.appendChild(btnRow);
-
-            textContainer.replaceChild(wrapper, textEl);
+            textContainer.replaceChild(editTextarea, textEl);
+            adjustHeight();
             editTextarea.focus();
+            
+            // 커서를 텍스트 맨 끝으로 이동
+            editTextarea.setSelectionRange(editTextarea.value.length, editTextarea.value.length);
+
+            editTextarea.addEventListener("input", adjustHeight);
 
             let isSaved = false;
 
@@ -612,25 +671,18 @@
               } else {
                 renderTodos();
               }
+              todoInput.focus();
             };
 
-            saveBtn.addEventListener("click", saveEdit);
-            
-            editTextarea.addEventListener("blur", (e) => {
-              if (e.relatedTarget === cancelBtn) {
-                renderTodos();
-                return;
-              }
-              saveEdit();
-            });
+            // 외부 클릭 시 자동 저장
+            editTextarea.addEventListener("blur", saveEdit);
 
-            cancelBtn.addEventListener("click", () => {
-              renderTodos();
-            });
-
+            // 단축키 제어 (Ctrl+Enter: 저장, Esc: 취소)
             editTextarea.addEventListener("keydown", (e) => {
               if (e.key === "Escape") {
+                isSaved = true;
                 renderTodos();
+                todoInput.focus();
               } else if (e.key === "Enter" && e.ctrlKey) {
                 saveEdit();
               }
@@ -643,11 +695,12 @@
 
         // Delete Todo Item Button
         const deleteBtn = document.createElement("button");
-        deleteBtn.className = "text-gray-300 hover:text-red-500 pt-0.5 transition shrink-0 opacity-0 group-hover:opacity-100";
+        deleteBtn.className = "text-gray-300 hover:text-red-500 pt-0.5 transition shrink-0 opacity-0 group-hover:opacity-100 px-0.5";
         deleteBtn.innerHTML = `<i class="ph ph-trash text-base"></i>`;
         deleteBtn.title = "삭제";
         deleteBtn.addEventListener("click", async () => {
           await remove(ref(db, `todos/${item.id}`));
+          todoInput.focus();
         });
 
         itemEl.appendChild(deleteBtn);
