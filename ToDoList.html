@@ -95,7 +95,7 @@
     <!-- Main Todo Content Area -->
     <div class="p-3 sm:p-4 flex-1 flex flex-col">
       
-      <!-- Input Section -->
+      <!-- Input Section  (Ctrl+Enter: 등록, Esc: 내용 삭제)-->
       <div class="mb-2.5">
         <div class="flex items-start gap-2">
           <textarea 
@@ -290,6 +290,23 @@
     todoInput.addEventListener("input", () => {
       todoInput.style.height = "auto";
       todoInput.style.height = todoInput.scrollHeight + "px";
+    });
+
+    // ⌨️ 단축키 처리 (Ctrl+Enter: 등록, Esc: 내용 삭제)
+    todoInput.addEventListener("keydown", async (e) => {
+      if (e.key === "Enter" && e.ctrlKey) {
+        e.preventDefault();
+        const val = todoInput.value.trim();
+        if (val) {
+          await createTodo(val, false);
+          todoInput.value = "";
+          todoInput.style.height = "auto";
+        }
+      } else if (e.key === "Escape") {
+        e.preventDefault();
+        todoInput.value = "";
+        todoInput.style.height = "auto";
+      }
     });
 
     // Listen to Tabs in Realtime DB
