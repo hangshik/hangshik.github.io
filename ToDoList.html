@@ -83,13 +83,10 @@
           <i class="ph ph-caret-right text-lg"></i>
         </button>
 
-        <!-- Right Action Buttons -->
+        <!-- Right Action Button -->
         <div class="flex items-center ml-2 space-x-1 shrink-0">
-          <button id="btn-add-tab" class="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg flex items-center justify-center transition" title="메뉴 추가">
+          <button id="btn-add-tab" class="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg flex items-center justify-center transition" title="메뉴 관리">
             <i class="ph ph-plus text-lg font-bold"></i>
-          </button>
-          <button id="btn-delete-tab" class="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg flex items-center justify-center transition" title="현재 메뉴 삭제">
-            <i class="ph ph-trash text-lg"></i>
           </button>
         </div>
       </div>
@@ -104,7 +101,7 @@
           <textarea 
             id="todo-input" 
             rows="1" 
-            placeholder="할 일을 입력하세요 (Enter로 줄바꿈 가능)..." 
+            placeholder="할 일을 입력하세요" 
             class="flex-1 p-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none text-sm sm:text-base transition overflow-hidden min-h-[38px]"
           ></textarea>
           <button 
@@ -134,19 +131,35 @@
     </div>
   </div>
 
-  <!-- Add Modal for Tabs -->
+  <!-- Tab Management Modal (추가 & 삭제 통합) -->
   <div id="add-modal" class="fixed inset-0 bg-black/40 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
-    <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl transform transition-all">
-      <h3 class="text-lg font-bold text-gray-900 mb-3">새 메뉴 추가</h3>
-      <input 
-        type="text" 
-        id="tab-name-input" 
-        placeholder="메뉴 이름을 입력하세요" 
-        class="w-full p-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm mb-5"
-      />
-      <div class="flex justify-end space-x-2">
-        <button id="add-modal-cancel-btn" class="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition">취소</button>
-        <button id="add-modal-confirm-btn" class="px-4 py-2 text-sm text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition shadow-md">추가</button>
+    <div class="bg-white rounded-2xl max-w-sm w-full p-5 shadow-2xl transform transition-all">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="text-base font-bold text-gray-900">메뉴 관리</h3>
+        <button id="add-modal-cancel-btn" class="text-gray-400 hover:text-gray-600 p-1">
+          <i class="ph ph-x text-lg"></i>
+        </button>
+      </div>
+
+      <!-- 새 메뉴 입력 -->
+      <div class="flex gap-2 mb-4">
+        <input 
+          type="text" 
+          id="tab-name-input" 
+          placeholder="새 메뉴 이름" 
+          class="flex-1 p-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+        />
+        <button id="add-modal-confirm-btn" class="px-3 py-2 text-sm text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition shadow-md shrink-0">
+          추가
+        </button>
+      </div>
+
+      <!-- 기존 메뉴 삭제 리스트 -->
+      <div class="border-t border-gray-100 pt-3">
+        <div class="text-xs text-gray-500 mb-2 font-medium">기존 메뉴 삭제</div>
+        <div id="modal-tab-list" class="max-h-48 overflow-y-auto space-y-1">
+          <!-- dynamic tab items in modal -->
+        </div>
       </div>
     </div>
   </div>
@@ -186,7 +199,6 @@
       if (isAuth === "true") {
         authOverlay.classList.add("hidden");
         mainApp.classList.remove("hidden");
-        setTimeout(() => todoInput.focus(), 50);
         return true;
       } else {
         authOverlay.classList.remove("hidden");
@@ -246,7 +258,6 @@
     const btnScrollLeft = document.getElementById("btn-scroll-left");
     const btnScrollRight = document.getElementById("btn-scroll-right");
     const btnAddTab = document.getElementById("btn-add-tab");
-    const btnDeleteTab = document.getElementById("btn-delete-tab");
     const btnAddTodo = document.getElementById("btn-add-todo");
     const btnAddDivider = document.getElementById("btn-add-divider");
     const dividerBtnContainer = document.getElementById("divider-btn-container");
@@ -257,6 +268,7 @@
     const tabNameInput = document.getElementById("tab-name-input");
     const addModalCancelBtn = document.getElementById("add-modal-cancel-btn");
     const addModalConfirmBtn = document.getElementById("add-modal-confirm-btn");
+    const modalTabList = document.getElementById("modal-tab-list");
 
     const deleteModal = document.getElementById("delete-modal");
     const modalCancelBtn = document.getElementById("modal-cancel-btn");
@@ -304,6 +316,7 @@
       }
 
       renderTabs();
+      renderModalTabList();
       checkTabOverflow();
     });
 
@@ -389,7 +402,6 @@
             renderTabs();
             renderTodos();
           }
-          todoInput.focus();
         });
 
         const titleSpan = document.createElement("span");
@@ -402,11 +414,40 @@
       checkTabOverflow();
     }
 
-    // Add Tab Modal Handlers
+    // Modal 내 메뉴 목록 및 삭제 버튼 렌더링
+    function renderModalTabList() {
+      if (!modalTabList) return;
+      modalTabList.innerHTML = "";
+
+      tabs.forEach(tab => {
+        const item = document.createElement("div");
+        item.className = "flex items-center justify-between p-2 rounded-lg bg-gray-50 text-xs text-gray-700";
+        
+        const nameSpan = document.createElement("span");
+        nameSpan.className = "font-medium";
+        nameSpan.textContent = tab.name;
+
+        const delBtn = document.createElement("button");
+        delBtn.className = "text-gray-400 hover:text-red-500 transition p-1";
+        delBtn.innerHTML = `<i class="ph ph-trash text-sm"></i>`;
+        delBtn.title = "삭제";
+
+        delBtn.addEventListener("click", () => {
+          openDeleteModal(tab.id, tab.name);
+        });
+
+        item.appendChild(nameSpan);
+        item.appendChild(delBtn);
+        modalTabList.appendChild(item);
+      });
+    }
+
+    // Tab Management Modal Handlers
     function openAddModal() {
       tabNameInput.value = "";
       addModal.classList.remove("hidden");
       addModal.classList.add("flex");
+      renderModalTabList();
       tabNameInput.focus();
     }
 
@@ -414,7 +455,6 @@
       addModal.classList.add("hidden");
       addModal.classList.remove("flex");
       tabNameInput.value = "";
-      todoInput.focus();
     }
 
     async function handleAddTab() {
@@ -428,7 +468,7 @@
         };
         await set(newTabRef, newTab);
         activeTabId = newTab.id;
-        closeAddModal();
+        tabNameInput.value = "";
       }
     }
 
@@ -448,18 +488,10 @@
       deleteModal.classList.add("flex");
     }
 
-    btnDeleteTab.addEventListener("click", () => {
-      const currentTab = tabs.find(t => t.id === activeTabId);
-      if (currentTab) {
-        openDeleteModal(currentTab.id, currentTab.name);
-      }
-    });
-
     modalCancelBtn.addEventListener("click", () => {
       deleteModal.classList.add("hidden");
       deleteModal.classList.remove("flex");
       tabToDeleteId = null;
-      todoInput.focus();
     });
 
     modalConfirmBtn.addEventListener("click", async () => {
@@ -476,7 +508,6 @@
         deleteModal.classList.add("hidden");
         deleteModal.classList.remove("flex");
         tabToDeleteId = null;
-        todoInput.focus();
       }
     });
 
@@ -518,8 +549,6 @@
         order: newOrder,
         createdAt: Date.now()
       });
-      
-      todoInput.focus();
     }
 
     // Add Todo Button Click
@@ -556,7 +585,14 @@
 
       currentTodos.forEach((item) => {
         const itemEl = document.createElement("div");
-        itemEl.className = "group flex items-start gap-1.5 px-1.5 py-0.5 rounded-lg hover:bg-gray-100/70 transition relative";
+        
+        if (item.isDivider) {
+          // 구분선일 때: 상하 간격 0, 영역 내 세로 중앙 정렬
+          itemEl.className = "group flex items-center gap-1.5 px-1.5 py-0 rounded-lg hover:bg-gray-100/70 transition relative h-5";
+        } else {
+          // 할 일 항목일 때
+          itemEl.className = "group flex items-start gap-1.5 px-1.5 py-0.5 rounded-lg hover:bg-gray-100/70 transition relative";
+        }
         itemEl.draggable = true;
 
         itemEl.addEventListener("dragstart", (e) => {
@@ -610,9 +646,9 @@
         });
 
         if (item.isDivider) {
-          // Divider
+          // Divider (상하 여백 0, 세로 중앙 정렬)
           const dividerContent = document.createElement("div");
-          dividerContent.className = "flex-1 my-1 border-b-2 border-gray-200/90";
+          dividerContent.className = "flex-1 border-b-2 border-gray-200/90";
           itemEl.appendChild(dividerContent);
         } else {
           // Checkbox
@@ -633,19 +669,21 @@
           const textContainer = document.createElement("div");
           textContainer.className = "flex-1 min-w-0";
 
-          const textEl = document.createElement("div");
-          textEl.className = `text-sm sm:text-base whitespace-pre-wrap break-words cursor-pointer py-0.5 leading-snug ${
+          // 글자 영역 스팬
+          const textEl = document.createElement("span");
+          textEl.className = `inline-block text-sm sm:text-base whitespace-pre-wrap break-words cursor-pointer py-0.5 leading-snug ${
             item.completed ? "line-through text-gray-400" : "text-gray-800"
           }`;
           textEl.textContent = item.text;
 
-          // Inline Edit Mode (버튼 없이 전체 내용 자동 높이 조절)
-          textEl.addEventListener("click", () => {
+          // 실제 글자 클릭 시에만 편집
+          textEl.addEventListener("click", (e) => {
+            e.stopPropagation();
+
             const editTextarea = document.createElement("textarea");
             editTextarea.className = "w-full p-1.5 text-sm sm:text-base border border-blue-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 whitespace-pre-wrap resize-none overflow-hidden leading-snug";
             editTextarea.value = item.text;
 
-            // 내용 높이에 맞춰 입력창 크기 자동 조절 함수
             const adjustHeight = () => {
               editTextarea.style.height = "auto";
               editTextarea.style.height = editTextarea.scrollHeight + "px";
@@ -654,8 +692,6 @@
             textContainer.replaceChild(editTextarea, textEl);
             adjustHeight();
             editTextarea.focus();
-            
-            // 커서를 텍스트 맨 끝으로 이동
             editTextarea.setSelectionRange(editTextarea.value.length, editTextarea.value.length);
 
             editTextarea.addEventListener("input", adjustHeight);
@@ -671,18 +707,14 @@
               } else {
                 renderTodos();
               }
-              todoInput.focus();
             };
 
-            // 외부 클릭 시 자동 저장
             editTextarea.addEventListener("blur", saveEdit);
 
-            // 단축키 제어 (Ctrl+Enter: 저장, Esc: 취소)
             editTextarea.addEventListener("keydown", (e) => {
               if (e.key === "Escape") {
                 isSaved = true;
                 renderTodos();
-                todoInput.focus();
               } else if (e.key === "Enter" && e.ctrlKey) {
                 saveEdit();
               }
@@ -695,12 +727,11 @@
 
         // Delete Todo Item Button
         const deleteBtn = document.createElement("button");
-        deleteBtn.className = "text-gray-300 hover:text-red-500 pt-0.5 transition shrink-0 opacity-0 group-hover:opacity-100 px-0.5";
+        deleteBtn.className = "text-gray-300 hover:text-red-500 transition shrink-0 opacity-0 group-hover:opacity-100 px-0.5";
         deleteBtn.innerHTML = `<i class="ph ph-trash text-base"></i>`;
         deleteBtn.title = "삭제";
         deleteBtn.addEventListener("click", async () => {
           await remove(ref(db, `todos/${item.id}`));
-          todoInput.focus();
         });
 
         itemEl.appendChild(deleteBtn);
