@@ -9,6 +9,10 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
   <link rel="stylesheet" href="assets/css/style.css">
+  
+  <!-- Supabase JS SDK -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
   <style>
     body {
       font-family: 'Noto Sans KR', sans-serif;
@@ -25,16 +29,50 @@
       margin: 2rem auto;
       border-radius: 8px;
     }
-    .logo {
-      text-align: center;
-      font-size: 2rem;
-      font-weight: 700;
+    
+    /* 헤더 영역 가운데 정렬 및 우측 버튼 배치 */
+    .logo-container {
+      position: relative;
       border-bottom: 2px solid #007bff;
       padding-bottom: 0.7rem;
+      margin-bottom: 1rem;
+    }
+    .logo {
+      font-size: 2rem;
+      font-weight: 700;
+      text-align: center; /* 제목 가운데 정렬 */
+      width: 100%;
     }
     .logo em {
       color: #007bff;
       font-style: normal;
+    }
+    .header-auth-btn {
+      position: absolute;
+      right: 0;
+      top: 50%;
+      transform: translateY(-60%);
+    }
+
+    .gear-btn {
+      background: none;
+      border: none;
+      font-size: 1.5rem;
+      color: #495057;
+      cursor: pointer;
+      transition: color 0.2s;
+    }
+    .gear-btn:hover {
+      color: #007bff;
+    }
+    .user-name-btn {
+      background: none;
+      border: none;
+      font-size: 1.1rem;
+      font-weight: bold;
+      color: #007bff;
+      cursor: pointer;
+      text-decoration: underline;
     }
     .main-menu-item {
       display: block;
@@ -43,7 +81,6 @@
       padding: 0.7rem;
       border-radius: 8px;
       text-align: center;
-      font-size: 1.5em;
       margin: 0.56rem 0;
       text-decoration: none;
       transition: all 0.3s ease;
@@ -60,7 +97,7 @@
     .sub-menu a {
       color: #333;
       text-decoration: none;
-      padding: 0.4rem 0.2rem; /* 줄간격 */
+      padding: 0.4rem 0.2rem;
       display: inline-block;
       transition: all 0.3s ease;
     }
@@ -68,24 +105,50 @@
     /* 2단 레이아웃 스타일 */
     .game-list-container {
       display: flex;
-      flex-direction: row; /* 가로 배치 */
-      gap: 0px; /* 좌우 단 사이 간격 */
+      flex-direction: row;
+      gap: 0px;
     }
     .game-column {
-      flex: 1; /* 공간 균등 분할 */
+      flex: 1;
     }
     
-    /* 좁은 화면 (500px 이하) 에서는 세로로 변경 */
     @media (max-width: 500px) {
       .game-list-container {
         flex-direction: column;
       }
     }
+
+    .auth-toggle-btn {
+      color: #007bff;
+      cursor: pointer;
+      text-decoration: underline;
+      font-size: 0.9rem;
+    }
+    .admin-badge {
+      background-color: #dc3545;
+      color: white;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 0.8rem;
+    }
   </style>
 </head>
 <body>
   <div class="main-content">
-    <div class="logo"><em>MATH</em> HOMEPAGE</div>
+    <!-- 헤더 영역 (로고 가운데 정렬 & 톱니바퀴/사용자 이름 우측 배치) -->
+    <div class="logo-container">
+      <div class="logo"><em>MATH</em> HOMEPAGE</div>
+      <div class="header-auth-btn">
+        <!-- 비로그인 상태일 때 나타나는 톱니바퀴 버튼 -->
+        <button id="auth-modal-btn" class="gear-btn" data-bs-toggle="modal" data-bs-target="#authModal" title="설정 및 로그인">
+          <i class="fas fa-cog"></i>
+        </button>
+        <!-- 로그인 상태일 때 나타나는 사용자 성명 버튼 -->
+        <button id="user-display-btn" class="user-name-btn" data-bs-toggle="modal" data-bs-target="#authModal" style="display: none;">
+          <span id="user-display-name"></span>님
+        </button>
+      </div>
+    </div>
 
     <!-- 수학게임 (1~15 / 16~25) -->
     <a href="qr/0.png" class="main-menu-item">수학게임</a>
@@ -128,12 +191,6 @@
           <a href="qr/32.png">32.</a> <a href="mathgame/32_DieHard/">다이하드 물통 게임</a><br>
           <a href="qr/33.png">33.</a> <a href="mathgame/33_Omok/">좌표 오목게임</a><br>
           <a href="qr/34.png">34.</a> <a href="mathgame/34_Sectoralsymmetry/">부채꼴 대칭 아트</a><br>
-
-
-          
-
-
-          
         </div>
       </div>
     </div>
@@ -141,7 +198,6 @@
     <div class="main-menu-item">중 1 수학</div>
     <div class="sub-menu">
       <div class="game-list-container">
-        <!-- 왼쪽: 1번 -->
         <div class="game-column">
           <a href="qr/m1-1.png">1.</a><a href="math/101.html">약수를 찾아라!</a><br>
           <a href="qr/m1-2.png">2.</a><a href="math/102.html">소인수분해</a><br>
@@ -149,7 +205,6 @@
           <a href="qr/m1-4.png">4.</a><a href="math/104.html">유리수 덧셈과 뺄셈</a><br>
           <a href="qr/m1-9.png">5.</a><a href="math/109.html">문자와 식</a><br>
         </div>
-        <!-- 오른쪽: 2번~ -->
         <div class="game-column">
           <a href="qr/m1-5.png">6.</a><a href="math/105.html">일차방정식 </a><br>
           <a href="qr/m1-6.png">7.</a><a href="math/106.html">다각형의 내각의 합</a><br>
@@ -162,14 +217,12 @@
     <div class="main-menu-item">중 2 수학</div>
     <div class="sub-menu">
       <div class="game-list-container">
-        <!-- 왼쪽: 1번 -->
         <div class="game-column">
           <a href="qr/m2-1.png">1.</a><a href="math/201.html">일차부등식과 수직선</a><br>
           <a href="qr/m2-2.png">2.</a><a href="math/202.html">연립방정식</a><br>
           <a href="qr/m2-3.png">3.</a><a href="math/203.html">연립방정식 교점 사격</a><br>
           <a href="qr/m2-4.png">4.</a><a href="math/204.html">일차함수 그래프 맞추기</a><br>
         </div>
-        <!-- 오른쪽: 2번 -->
         <div class="game-column">
           <a href="qr/m2-5.png">5.</a><a href="math/205.html">함수 상자 규칙 찾기</a><br>
           <a href="qr/m2-6.png">6.</a><a href="math/206.html">피타고라스 퀴즈</a><br>
@@ -181,12 +234,10 @@
     <div class="main-menu-item">중 3 수학</div>
     <div class="sub-menu">
       <div class="game-list-container">
-        <!-- 왼쪽: 1번 -->
         <div class="game-column">
            <a href="qr/m3-1.png">1.</a><a href="math/301.html">이차방정식</a><br>
            <a href="qr/m3-2.png">2.</a><a href="math/302.html">삼각비 맞추기</a><br>
         </div>
-        <!-- 오른쪽: 2번 -->
         <div class="game-column">
            <a href="qr/m3-3.png">3.</a><a href="math/303.html">삼각비 시각화</a><br>
         </div>
@@ -196,14 +247,11 @@
     <div class="main-menu-item">글로컬 미래교실 수업</div>
     <div class="sub-menu">
       <div class="game-list-container">
-        <!-- 왼쪽: 1번 -->
         <div class="game-column">
           <a href="qr/g1.png">1.</a><a href="Glocal/jn.html">전남광주 한붓그리기</a><br>
           <a href="qr/g2.png">2.</a><a href="Glocal/jn_math-tour.html">전남광주 math-tour</a><br>
         </div>
-        <!-- 오른쪽: 2번~ -->
         <div class="game-column">
-          
           <a href="qr/g3.png">3.</a><a href="Glocal/">기사의 여행(좌표1)</a><br>
           <a href="qr/g4.png">4.</a><a href="Glocal/index2.html">기사의 여행(좌표2)</a><br>      
         </div>
@@ -215,25 +263,285 @@
     <a href="EscapeRoom/" class="main-menu-item">관리자 모드</a>
   </div>
 
+  <!-- 1. Auth 통합 모달 (로그인/회원가입/계정정보) -->
+  <div class="modal fade" id="authModal" tabindex="-1" aria-labelledby="authModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="authModalLabel">계정 설정</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <!-- 로그인 완료 상태 화면 -->
+          <div id="user-info-section" style="display: none;">
+            <div class="text-center py-3">
+              <i class="fas fa-user-circle fa-4x text-primary mb-3"></i>
+              <h4><span id="modal-user-name"></span>님</h4>
+              <p class="text-muted mb-2" id="modal-user-email"></p>
+              <div id="modal-admin-tag" class="admin-badge d-inline-block mb-3" style="display: none;">관리자</div>
+              <div>
+                <button class="btn btn-outline-danger w-100 mt-2" onclick="handleLogout()">로그아웃</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 로그인 폼 -->
+          <form id="login-form" onsubmit="handleLogin(event)">
+            <h5 class="mb-3"><i class="fas fa-sign-in-alt me-2"></i>로그인</h5>
+            <div class="mb-3">
+              <label class="form-label">이메일 (아이디)</label>
+              <input type="email" id="login-email" class="form-control" placeholder="example@email.com" required>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">비밀번호</label>
+              <input type="password" id="login-password" class="form-control" placeholder="비밀번호" required>
+            </div>
+            <div class="d-flex justify-content-between align-items-center">
+              <button type="submit" class="btn btn-primary">로그인</button>
+              <span class="auth-toggle-btn" onclick="toggleAuthMode('signup')">회원가입 하기</span>
+            </div>
+          </form>
+
+          <!-- 회원가입 폼 -->
+          <form id="signup-form" style="display: none;" onsubmit="handleSignUp(event)">
+            <h5 class="mb-3"><i class="fas fa-user-plus me-2"></i>회원가입</h5>
+            
+            <!-- 비가입 이용 안내 문구 -->
+            <div class="alert alert-warning py-2 mb-3" style="font-size: 0.88rem;">
+              <i class="fas fa-exclamation-triangle me-1"></i>
+              <strong>안내:</strong> 본 홈페이지는 회원가입이나 로그인 없이도 모든 수학 게임 및 학습 콘텐츠를 자유롭게 이용하실 수 있습니다.
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label">이메일 (아이디)</label>
+              <input type="email" id="signup-email" class="form-control" placeholder="example@email.com" required>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">성명</label>
+              <input type="text" id="signup-name" class="form-control" placeholder="홍길동" required>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">비밀번호</label>
+              <input type="password" id="signup-password" class="form-control" placeholder="비밀번호" required>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">전화번호 (선택)</label>
+              <input type="tel" id="signup-phone" class="form-control" placeholder="010-0000-0000">
+            </div>
+
+            <div class="alert alert-info py-2" style="font-size: 0.85rem;">
+              <i class="fas fa-info-circle me-1"></i>
+              가입 후 입력하신 이메일함에서 <strong>인증 링크를 클릭</strong>하셔야 로그인이 완료될 수 있습니다. (Supabase 인증 설정에 따름)
+            </div>
+
+            <div class="d-flex justify-content-between align-items-center">
+              <button type="submit" class="btn btn-success">가입하기</button>
+              <span class="auth-toggle-btn" onclick="toggleAuthMode('login')">로그인으로 돌아가기</span>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. 알림 메시지 전용 모달 (alert 대체용) -->
+  <div class="modal fade" id="messageModal" tabindex="-1" aria-labelledby="messageModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+      <div class="modal-content text-center">
+        <div class="modal-header border-0 pb-0">
+          <h5 class="modal-title w-100" id="messageModalTitle">알림</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body py-3" id="messageModalBody" style="white-space: pre-line;">
+          <!-- 알림 메시지 문구가 들어가는 위치 -->
+        </div>
+        <div class="modal-footer border-0 pt-0 justify-content-center">
+          <button type="button" class="btn btn-primary btn-sm px-4" data-bs-dismiss="modal">확인</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bootstrap 5 JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+
   <!-- Google tag (gtag.js) -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-VHD0QPH39L"></script>
   <script>
     window.dataLayer = window.dataLayer || [];
     function gtag(){dataLayer.push(arguments);}
     gtag('js', new Date());
-
     gtag('config', 'G-VHD0QPH39L');
-</script>
+  </script>
 
-	<!-- 네이버 애널리틱스 -->
-<script type="text/javascript" src="//wcs.naver.net/wcslog.js"></script>
-<script type="text/javascript">
-if(!wcs_add) var wcs_add = {};
-wcs_add["wa"] = "1267cb9b3593610";
-if(window.wcs) {
-wcs_do();
-}
-</script>
-  
+  <!-- 네이버 애널리틱스 -->
+  <script type="text/javascript" src="//wcs.naver.net/wcslog.js"></script>
+  <script type="text/javascript">
+    if(!wcs_add) var wcs_add = {};
+    wcs_add["wa"] = "1267cb9b3593610";
+    if(window.wcs) {
+      wcs_do();
+    }
+  </script>
+
+  <!-- Supabase 연동 스크립트 -->
+  <script>
+    const SUPABASE_URL = 'https://whhmnutvzyqsnbffohqj.supabase.co'; // 예: 'https://xxxx.supabase.co'
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndoaG1udXR2enlxc25iZmZvaHFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY4NTQ2OTYsImV4cCI6MjEwMjQzMDY5Nn0.yMVCwhuiJs_rtuf51zQty3yJfNXMHF2Oauy8y08_2Gc';
+
+    const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    let authModalInstance = null;
+    let messageModalInstance = null;
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      authModalInstance = new bootstrap.Modal(document.getElementById('authModal'));
+      messageModalInstance = new bootstrap.Modal(document.getElementById('messageModal'));
+
+      // 세션 확인
+      const { data: { session } } = await _supabase.auth.getSession();
+      await updateAuthUI(session);
+
+      // Auth 상태 감지
+      _supabase.auth.onAuthStateChange(async (event, session) => {
+        await updateAuthUI(session);
+      });
+    });
+
+    // 알림 모달을 띄워주는 공통 함수
+    function showMessage(title, text) {
+      document.getElementById('messageModalTitle').textContent = title;
+      document.getElementById('messageModalBody').textContent = text;
+      messageModalInstance.show();
+    }
+
+    // 폼 전환 (로그인 <-> 회원가입)
+    function toggleAuthMode(mode) {
+      const loginForm = document.getElementById('login-form');
+      const signupForm = document.getElementById('signup-form');
+      if (mode === 'signup') {
+        loginForm.style.display = 'none';
+        signupForm.style.display = 'block';
+      } else {
+        loginForm.style.display = 'block';
+        signupForm.style.display = 'none';
+      }
+    }
+
+    // 로그인 상태 UI 변경 (profiles 테이블 연동)
+    async function updateAuthUI(session) {
+      const gearBtn = document.getElementById('auth-modal-btn');
+      const userDisplayBtn = document.getElementById('user-display-btn');
+      const userDisplayName = document.getElementById('user-display-name');
+
+      const userInfoSection = document.getElementById('user-info-section');
+      const loginForm = document.getElementById('login-form');
+      const signupForm = document.getElementById('signup-form');
+      const modalUserName = document.getElementById('modal-user-name');
+      const modalUserEmail = document.getElementById('modal-user-email');
+      const modalAdminTag = document.getElementById('modal-admin-tag');
+
+      if (session && session.user) {
+        const name = session.user.user_metadata?.full_name || '사용자';
+        const email = session.user.email;
+
+        gearBtn.style.display = 'none';
+        userDisplayBtn.style.display = 'inline-block';
+        userDisplayName.textContent = name;
+
+        loginForm.style.display = 'none';
+        signupForm.style.display = 'none';
+        userInfoSection.style.display = 'block';
+        modalUserName.textContent = name;
+        modalUserEmail.textContent = email;
+
+        // Supabase 'profiles' 테이블에서 role 조회하여 관리자 판별
+        const { data: profile, error } = await _supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', session.user.id)
+          .single();
+
+        if (!error && profile && profile.role === 'admin') {
+          modalAdminTag.style.display = 'inline-block';
+        } else {
+          modalAdminTag.style.display = 'none';
+        }
+      } else {
+        gearBtn.style.display = 'inline-block';
+        userDisplayBtn.style.display = 'none';
+
+        userInfoSection.style.display = 'none';
+        loginForm.style.display = 'block';
+        signupForm.style.display = 'none';
+      }
+    }
+
+    // 로그인 처리
+    async function handleLogin(e) {
+      e.preventDefault();
+      const email = document.getElementById('login-email').value;
+      const password = document.getElementById('login-password').value;
+
+      const { data, error } = await _supabase.auth.signInWithPassword({
+        email: email,
+        password: password,
+      });
+
+      if (error) {
+        showMessage('로그인 실패', error.message);
+      } else {
+        authModalInstance.hide();
+        setTimeout(() => {
+          showMessage('알림', '로그인되었습니다.');
+        }, 300);
+      }
+    }
+
+    // 회원가입 처리
+    async function handleSignUp(e) {
+      e.preventDefault();
+      const email = document.getElementById('signup-email').value;
+      const fullName = document.getElementById('signup-name').value;
+      const password = document.getElementById('signup-password').value;
+      const phone = document.getElementById('signup-phone').value;
+
+      const { data, error } = await _supabase.auth.signUp({
+        email: email,
+        password: password,
+        options: {
+          data: {
+            full_name: fullName,
+            phone: phone
+          }
+        }
+      });
+
+      if (error) {
+        showMessage('회원가입 실패', error.message);
+      } else {
+        // 가입 완료 시 profiles 테이블 레코드 추가 (트리거가 없다면 이 구문으로 저장됨)
+        if (data?.user) {
+          await _supabase.from('profiles').insert([
+            { id: data.user.id, role: 'user' }
+          ]);
+        }
+        toggleAuthMode('login');
+        showMessage('안내', '회원가입 요청이 완료되었습니다!\n이메일 인증을 진행해 주세요.');
+      }
+    }
+
+    // 로그아웃 처리
+    async function handleLogout() {
+      const { error } = await _supabase.auth.signOut();
+      if (error) {
+        showMessage('로그아웃 실패', error.message);
+      } else {
+        authModalInstance.hide();
+        setTimeout(() => {
+          showMessage('알림', '로그아웃되었습니다.');
+        }, 300);
+      }
+    }
+  </script>
 </body>
 </html>

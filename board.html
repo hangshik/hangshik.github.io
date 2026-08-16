@@ -4,7 +4,19 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>자유게시판</title>
+        <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-VHD0QPH39L"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-VHD0QPH39L');
+  </script>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+  
+  <!-- Supabase JS SDK -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
   <style>
     :root {
       --bg: #f8f9fa;
@@ -43,7 +55,6 @@
     .btn-secondary { background: var(--secondary); }
     .btn-secondary:hover { background: var(--secondary-hover); }
 
-    /* 은은한 라인 형태의 수정/삭제 버튼 스타일 */
     .btn-outline {
       background: transparent;
       color: var(--sub-text);
@@ -64,7 +75,7 @@
     .post-list { display: flex; flex-direction: column; gap: 12px; }
     .post-item { background: var(--card-bg); border-radius: 10px; padding: 16px; border: 1px solid var(--border); }
     .post-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-    .post-author { color: var(--primary);font-weight: 700; font-size: 16px; }
+    .post-author { color: var(--primary); font-weight: 700; font-size: 16px; }
     .post-time { font-size: 13px; color: var(--sub-text); }
     .post-content { font-size: 15px; line-height: 1.5; white-space: pre-wrap; margin-bottom: 12px; word-break: break-all; }
     .post-actions { display: flex; justify-content: flex-end; gap: 6px; }
@@ -75,7 +86,18 @@
 
     .empty-msg { text-align: center; color: var(--sub-text); padding: 40px 0; }
 
-    /* ================= Modal Styles ================= */
+    .user-info-banner {
+      background: #e7f5ff;
+      border: 1px solid #a5d8ff;
+      color: #1971c2;
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 15px;
+    }
+
+    /* Modal Styles */
     .modal-overlay {
       position: fixed;
       top: 0; left: 0; right: 0; bottom: 0;
@@ -88,42 +110,16 @@
       transition: opacity 0.2s ease;
       z-index: 1000;
     }
-    .modal-overlay.active {
-      opacity: 1;
-      pointer-events: auto;
-    }
+    .modal-overlay.active { opacity: 1; pointer-events: auto; }
     .modal-card {
-      background: #fff;
-      border-radius: 12px;
-      width: 90%;
-      max-width: 480px;
-      padding: 24px;
-      box-shadow: 0 10px 25px rgba(0,0,0,0.15);
-      transform: translateY(-20px);
-      transition: transform 0.2s ease;
+      background: #fff; border-radius: 12px; width: 90%; max-width: 480px; padding: 24px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.15); transform: translateY(-20px); transition: transform 0.2s ease;
     }
-    .modal-overlay.active .modal-card {
-      transform: translateY(0);
-    }
-    .modal-header {
-      font-size: 18px;
-      font-weight: 800;
-      margin-bottom: 16px;
-    }
-    .modal-body {
-      margin-bottom: 20px;
-    }
-    .modal-footer {
-      display: flex;
-      justify-content: flex-end;
-      gap: 8px;
-    }
-    .modal-error {
-      color: var(--danger);
-      font-size: 13px;
-      margin-top: 8px;
-      display: none;
-    }
+    .modal-overlay.active .modal-card { transform: translateY(0); }
+    .modal-header { font-size: 18px; font-weight: 800; margin-bottom: 16px; }
+    .modal-body { margin-bottom: 20px; }
+    .modal-footer { display: flex; justify-content: flex-end; gap: 8px; }
+    .modal-error { color: var(--danger); font-size: 13px; margin-top: 8px; display: none; }
   </style>
 </head>
 <body>
@@ -133,7 +129,13 @@
 
     <!-- 글 작성 폼 -->
     <div class="card">
-      <div class="form-row">
+      <!-- 로그인 사용자 안내 메시지 -->
+      <div id="userBanner" class="user-info-banner" style="display: none;">
+        🙋‍♂️ <span id="bannerUserName"></span>(으)로 로그인되어 있습니다.
+      </div>
+
+      <!-- 익명 사용자용 작성자/비밀번호 입력란 -->
+      <div class="form-row" id="anonInputs">
         <div class="input-box">
           <label for="author">작성자 이름</label>
           <input type="text" id="author" placeholder="미입력 시 '익명'">
@@ -143,6 +145,7 @@
           <input type="password" id="password" placeholder="비밀번호 설정">
         </div>
       </div>
+
       <div class="form-group">
         <label for="content">내용</label>
         <textarea id="content" placeholder="내용을 입력하세요..."></textarea>
@@ -168,27 +171,18 @@
     </div>
   </div>
 
-  <!-- Firebase v10 SDK 로드 -->
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, query, orderBy } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-
-    const firebaseConfig = {
-      apiKey: "AIzaSyBHFaa5cuyPWLt0I7uEw0nvo6wuoK5Xl0E",
-      authDomain: "hangshik-github.firebaseapp.com",
-      projectId: "hangshik-github",
-      storageBucket: "hangshik-github.firebasestorage.app",
-      messagingSenderId: "340681099858",
-      appId: "1:340681099858:web:a2e472867fb553b296ed8b",
-      measurementId: "G-4XF8GZMQ26"
-    };
-
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
+  <script>
+    // ================= Supabase 설정 =================
+    const SUPABASE_URL = 'https://whhmnutvzyqsnbffohqj.supabase.co'; // 예: 'https://xxxx.supabase.co'
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndoaG1udXR2enlxc25iZmZvaHFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY4NTQ2OTYsImV4cCI6MjEwMjQzMDY5Nn0.yMVCwhuiJs_rtuf51zQty3yJfNXMHF2Oauy8y08_2Gc';
+    const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     let posts = [];
     let currentPage = 1;
     const postsPerPage = 10;
+    
+    let currentUser = null; // 로그인된 사용자 정보
+    let isAdmin = false;    // 관리자여부
 
     // SHA-256 암호화 함수
     async function hashPassword(plainText) {
@@ -198,6 +192,50 @@
       const hashBuffer = await crypto.subtle.digest("SHA-256", data);
       const hashArray = Array.from(new Uint8Array(hashBuffer));
       return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+
+    // ================= 초기화 및 로그인 세션 확인 =================
+    document.addEventListener("DOMContentLoaded", async () => {
+      await checkAuthSession();
+      await fetchPosts();
+
+      // Auth 상태 변경 감지
+      _supabase.auth.onAuthStateChange(async (event, session) => {
+        await checkAuthSession();
+      });
+    });
+
+    async function checkAuthSession() {
+      const { data: { session } } = await _supabase.auth.getSession();
+      const userBanner = document.getElementById("userBanner");
+      const bannerUserName = document.getElementById("bannerUserName");
+      const anonInputs = document.getElementById("anonInputs");
+
+      if (session && session.user) {
+        currentUser = session.user;
+        const name = currentUser.user_metadata?.full_name || '회원';
+        
+        // 관리자 여부 체크 (profiles 테이블)
+        const { data: profile } = await _supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', currentUser.id)
+          .single();
+        
+        isAdmin = (profile && profile.role === 'admin');
+
+        // UI 처리: 작성자/비밀번호 입력란 숨기기
+        userBanner.style.display = "block";
+        bannerUserName.textContent = name;
+        anonInputs.style.display = "none";
+      } else {
+        currentUser = null;
+        isAdmin = false;
+
+        // UI 처리: 작성자/비밀번호 입력란 보이기
+        userBanner.style.display = "none";
+        anonInputs.style.display = "flex";
+      }
     }
 
     // ================= 모달 시스템 제어 =================
@@ -239,23 +277,31 @@
     // ================= 게시글 불러오기 및 렌더링 =================
     async function fetchPosts() {
       try {
-        const q = query(collection(db, "posts"), orderBy("timestamp", "desc"));
-        const querySnapshot = await getDocs(q);
-        posts = [];
-        querySnapshot.forEach((docSnap) => {
-          posts.push({ id: docSnap.id, ...docSnap.data() });
-        });
+        const { data, error } = await _supabase
+          .from('posts')
+          .select('*')
+          .order('id', { ascending: false });
+
+        if (error) throw error;
+
+        posts = data.map(post => ({
+          id: post.id,
+          author: post.author,
+          passwordHash: post.password_hash,
+          content: post.content,
+          timeStr: post.time_str,
+          userId: post.user_id
+        }));
+
         renderPosts();
       } catch (err) {
         console.error("데이터 불러오기 실패:", err);
-        document.getElementById("postList").innerHTML = `<div class="empty-msg">Firebase 연동 설정을 확인해주세요.</div>`;
+        document.getElementById("postList").innerHTML = `<div class="empty-msg">Supabase 연동 설정을 확인해주세요.</div>`;
       }
     }
 
     // 게시글 작성
     document.getElementById("btnSubmit").addEventListener("click", async () => {
-      const authorInput = document.getElementById("author").value.trim();
-      const passwordInput = document.getElementById("password").value;
       const contentInput = document.getElementById("content").value.trim();
 
       if (!contentInput) {
@@ -263,19 +309,38 @@
         return;
       }
 
-      const author = authorInput || "익명";
-      const hashedPassword = await hashPassword(passwordInput);
+      let author = "익명";
+      let hashedPassword = "";
+      let userId = null;
+
+      // 로그인 유저 / 익명 유저 구분 처리
+      if (currentUser) {
+        author = currentUser.user_metadata?.full_name || '회원';
+        userId = currentUser.id;
+      } else {
+        const authorInput = document.getElementById("author").value.trim();
+        const passwordInput = document.getElementById("password").value;
+        author = authorInput || "익명";
+        hashedPassword = await hashPassword(passwordInput);
+      }
+
       const now = new Date();
       const timeString = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
 
       try {
-        await addDoc(collection(db, "posts"), {
-          author: author,
-          passwordHash: hashedPassword,
-          content: contentInput,
-          timeStr: timeString,
-          timestamp: Date.now()
-        });
+        const { error } = await _supabase
+          .from('posts')
+          .insert([
+            {
+              author: author,
+              password_hash: hashedPassword,
+              content: contentInput,
+              time_str: timeString,
+              user_id: userId
+            }
+          ]);
+
+        if (error) throw error;
 
         document.getElementById("author").value = "";
         document.getElementById("password").value = "";
@@ -311,8 +376,8 @@
           </div>
           <div class="post-content">${escapeHtml(post.content)}</div>
           <div class="post-actions">
-            <button class="btn-outline" onclick="openEditModal('${post.id}')">수정</button>
-            <button class="btn-outline" onclick="openDeleteModal('${post.id}')">삭제</button>
+            <button class="btn-outline" onclick="openEditModal(${post.id})">수정</button>
+            <button class="btn-outline" onclick="openDeleteModal(${post.id})">삭제</button>
           </div>
         `;
         postList.appendChild(item);
@@ -343,16 +408,23 @@
       const post = posts.find(p => p.id === id);
       if (!post) return;
 
-      const bodyHtml = `
+      const isOwner = (currentUser && post.userId === currentUser.id) || isAdmin;
+
+      // 비밀번호 입력란 표시 여부 결정
+      const passwordGroupHtml = isOwner ? '' : `
         <div class="form-group">
           <label>비밀번호</label>
           <input type="password" id="modalEditPassword" placeholder="비밀번호 입력">
         </div>
+      `;
+
+      const bodyHtml = `
+        ${passwordGroupHtml}
         <div class="form-group">
           <label>수정할 내용</label>
           <textarea id="modalEditContent">${escapeHtml(post.content)}</textarea>
         </div>
-        <div id="modalEditError" class="modal-error">비밀번호가 일치하지 않습니다.</div>
+        <div id="modalEditError" class="modal-error">오류가 발생했습니다.</div>
       `;
 
       openModal("게시글 수정", bodyHtml, [
@@ -361,7 +433,6 @@
           text: "수정 완료", 
           class: "", 
           onClick: async (btn) => {
-            const pwdInput = document.getElementById("modalEditPassword").value;
             const newContent = document.getElementById("modalEditContent").value.trim();
             const errorEl = document.getElementById("modalEditError");
 
@@ -371,13 +442,24 @@
               return;
             }
 
-            const inputHash = await hashPassword(pwdInput);
-            const isOwner = post.passwordHash === inputHash;
+            // 권한 체크
+            let canEdit = isOwner;
+            if (!canEdit) {
+              const pwdInput = document.getElementById("modalEditPassword").value;
+              const inputHash = await hashPassword(pwdInput);
+              canEdit = (post.passwordHash && post.passwordHash === inputHash);
+            }
 
-            if (isOwner) {
+            if (canEdit) {
               try {
                 btn.disabled = true;
-                await updateDoc(doc(db, "posts", id), { content: newContent });
+                const { error } = await _supabase
+                  .from('posts')
+                  .update({ content: newContent })
+                  .eq('id', id);
+
+                if (error) throw error;
+
                 closeModal();
                 showAlertModal("성공", "게시글이 수정되었습니다.");
                 fetchPosts();
@@ -387,7 +469,7 @@
                 btn.disabled = false;
               }
             } else {
-              errorEl.innerText = "비밀번호가 일치하지 않습니다.";
+              errorEl.innerText = "비밀번호가 일치하지 않거나 수정 권한이 없습니다.";
               errorEl.style.display = "block";
             }
           } 
@@ -400,13 +482,20 @@
       const post = posts.find(p => p.id === id);
       if (!post) return;
 
-      const bodyHtml = `
-        <p style="margin-bottom: 12px;">정말로 이 게시글을 삭제하시겠습니까?</p>
+      const isOwner = (currentUser && post.userId === currentUser.id) || isAdmin;
+
+      // 비밀번호 입력란 표시 여부 결정
+      const passwordGroupHtml = isOwner ? '' : `
         <div class="form-group">
           <label>비밀번호</label>
           <input type="password" id="modalDeletePassword" placeholder="비밀번호 입력">
         </div>
-        <div id="modalDeleteError" class="modal-error">비밀번호가 일치하지 않습니다.</div>
+      `;
+
+      const bodyHtml = `
+        <p style="margin-bottom: 12px;">정말로 이 게시글을 삭제하시겠습니까?</p>
+        ${passwordGroupHtml}
+        <div id="modalDeleteError" class="modal-error">오류가 발생했습니다.</div>
       `;
 
       openModal("게시글 삭제", bodyHtml, [
@@ -415,16 +504,26 @@
           text: "삭제하기", 
           class: "btn-danger", 
           onClick: async (btn) => {
-            const pwdInput = document.getElementById("modalDeletePassword").value;
             const errorEl = document.getElementById("modalDeleteError");
 
-            const inputHash = await hashPassword(pwdInput);
-            const isOwner = post.passwordHash === inputHash;
+            // 권한 체크
+            let canDelete = isOwner;
+            if (!canDelete) {
+              const pwdInput = document.getElementById("modalDeletePassword").value;
+              const inputHash = await hashPassword(pwdInput);
+              canDelete = (post.passwordHash && post.passwordHash === inputHash);
+            }
 
-            if (isOwner) {
+            if (canDelete) {
               try {
                 btn.disabled = true;
-                await deleteDoc(doc(db, "posts", id));
+                const { error } = await _supabase
+                  .from('posts')
+                  .delete()
+                  .eq('id', id);
+
+                if (error) throw error;
+
                 closeModal();
                 showAlertModal("성공", "게시글이 삭제되었습니다.");
                 fetchPosts();
@@ -434,7 +533,7 @@
                 btn.disabled = false;
               }
             } else {
-              errorEl.innerText = "비밀번호가 일치하지 않습니다.";
+              errorEl.innerText = "비밀번호가 일치하지 않거나 삭제 권한이 없습니다.";
               errorEl.style.display = "block";
             }
           } 
@@ -445,9 +544,6 @@
     function escapeHtml(str) {
       return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
     }
-
-    // 초기 실행
-    fetchPosts();
   </script>
 </body>
 </html>

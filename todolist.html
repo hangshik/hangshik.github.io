@@ -1,0 +1,913 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <title>To Do List</title>
+        <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-VHD0QPH39L"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-VHD0QPH39L');
+  </script>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Phosphor Icons -->
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+  <!-- Supabase JS SDK -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    /* Hide scrollbars for smooth tab navigation */
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+    /* Drag over highlight line for Todo items (Vertical) */
+    .drag-line-top {
+      border-top: 2px solid #3b82f6 !important;
+    }
+    .drag-line-bottom {
+      border-bottom: 2px solid #3b82f6 !important;
+    }
+    /* Drag over highlight line for Tabs (Horizontal) */
+    .drag-line-left {
+      border-left: 3px solid #3b82f6 !important;
+    }
+    .drag-line-right {
+      border-right: 3px solid #3b82f6 !important;
+    }
+  </style>
+</head>
+<body class="bg-gray-100 min-h-screen text-gray-800 flex flex-col items-center p-2 sm:p-5">
+
+  <!-- Password Access Lock Overlay -->
+  <div id="auth-overlay" class="fixed inset-0 bg-slate-900/90 backdrop-blur-md z-[100] flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl text-center">
+      <div class="w-12 h-12 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
+        <i class="ph ph-lock-key text-2xl"></i>
+      </div>
+      <h2 class="text-xl font-bold text-gray-900 mb-1">보안 접속</h2>
+      <p class="text-xs text-gray-500 mb-5">비밀번호를 입력해야 서비스에 접근할 수 있습니다.</p>
+      
+      <input 
+        type="password" 
+        id="auth-password-input" 
+        placeholder="비밀번호 입력" 
+        class="w-full p-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-center text-lg mb-2"
+      />
+      <p id="auth-error-msg" class="text-xs text-red-500 hidden mb-3">비밀번호가 올바르지 않습니다.</p>
+
+      <button 
+        id="auth-submit-btn" 
+        class="w-full py-3 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 transition active:scale-95 shadow-md"
+      >
+        확인
+      </button>
+    </div>
+  </div>
+
+  <!-- Main Content Wrapper -->
+  <div id="main-app" class="w-full max-w-4xl bg-white rounded-2xl shadow-xl overflow-hidden flex flex-col min-h-[600px] hidden">
+    
+    <!-- Tab Navigation Area -->
+    <div class="border-b border-gray-200 bg-slate-50 relative">
+      <div class="flex items-center justify-between px-2 py-1.5">
+        <!-- Left Scroll Button -->
+        <button id="btn-scroll-left" class="p-1.5 text-gray-500 hover:text-gray-800 hover:bg-gray-200 rounded-lg hidden transition">
+          <i class="ph ph-caret-left text-lg"></i>
+        </button>
+
+        <!-- Tabs Container -->
+        <div id="tabs-container" class="flex items-center space-x-1 overflow-x-auto no-scrollbar scroll-smooth pl-0.5 pr-2 py-0.5 flex-1">
+          <!-- Dynamic Tabs render here -->
+        </div>
+
+        <!-- Right Scroll Button -->
+        <button id="btn-scroll-right" class="p-1.5 text-gray-500 hover:text-gray-800 hover:bg-gray-200 rounded-lg hidden transition">
+          <i class="ph ph-caret-right text-lg"></i>
+        </button>
+
+        <!-- Right Action Button -->
+        <div class="flex items-center ml-2 space-x-1 shrink-0">
+          <button id="btn-add-tab" class="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg flex items-center justify-center transition" title="메뉴 관리">
+            <i class="ph ph-plus text-lg font-bold"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Todo Content Area -->
+    <div class="px-1.5 py-3 sm:px-2 sm:py-4 flex-1 flex flex-col">
+      
+      <!-- Input Section -->
+      <div class="mb-2.5">
+        <div class="flex items-center gap-1.5">
+          <textarea 
+            id="todo-input" 
+            rows="1" 
+            placeholder="할 일을 입력하세요" 
+            class="flex-1 p-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none text-sm sm:text-sm transition overflow-hidden min-h-[38px]"
+          ></textarea>
+          
+          <!-- 모바일/PC 겸용 되돌리기 버튼 -->
+          <button 
+            id="btn-undo-input" 
+            class="px-2.5 py-2 bg-gray-100 text-gray-600 rounded-xl hover:bg-gray-200 active:scale-95 transition flex items-center justify-center shrink-0 border border-gray-300 h-[38px] select-none"
+            title="길게 누르면 연속 되돌리기"
+          >
+            <i class="ph ph-arrow-u-up-left text-lg"></i>
+          </button>
+
+          <button 
+            id="btn-add-todo" 
+            class="px-3.5 py-2 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 active:scale-95 transition flex items-center justify-center shrink-0 shadow-md h-[38px] text-sm sm:text-base"
+          >
+            등록
+          </button>
+        </div>
+      </div>
+
+      <!-- Todo List Container -->
+      <div id="todo-list" class="space-y-0 flex-1">
+        <!-- Dynamic Todo items render here -->
+      </div>
+      
+      <!-- 구분선 추가 버튼 -->
+      <div id="divider-btn-container" class="mt-2 flex justify-center hidden">
+        <button 
+          id="btn-add-divider" 
+          class="px-2.5 py-1 bg-gray-100 hover:bg-gray-200 text-gray-600 text-xs rounded-lg transition flex items-center gap-1 border border-gray-300 shadow-sm"
+        >
+          <i class="ph ph-minus font-bold"></i> 구분선 추가
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Tab Management Modal (추가 & 삭제 통합) -->
+  <div id="add-modal" class="fixed inset-0 bg-black/40 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
+    <div class="bg-white rounded-2xl max-w-sm w-full p-5 shadow-2xl transform transition-all">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="text-base font-bold text-gray-900">메뉴 관리</h3>
+        <button id="add-modal-cancel-btn" class="text-gray-400 hover:text-gray-600 p-1">
+          <i class="ph ph-x text-lg"></i>
+        </button>
+      </div>
+
+      <!-- 새 메뉴 입력 -->
+      <div class="flex gap-2 mb-4">
+        <input 
+          type="text" 
+          id="tab-name-input" 
+          placeholder="새 메뉴 이름" 
+          class="flex-1 p-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+        />
+        <button id="add-modal-confirm-btn" class="px-3 py-2 text-sm text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition shadow-md shrink-0">
+          추가
+        </button>
+      </div>
+
+      <!-- 기존 메뉴 삭제 리스트 -->
+      <div class="border-t border-gray-100 pt-3">
+        <div class="text-xs text-gray-500 mb-2 font-medium">기존 메뉴 삭제</div>
+        <div id="modal-tab-list" class="max-h-48 overflow-y-auto space-y-1">
+          <!-- dynamic tab items in modal -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Delete Confirm Modal for Tabs -->
+  <div id="delete-modal" class="fixed inset-0 bg-black/40 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
+    <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl transform transition-all">
+      <h3 class="text-lg font-bold text-gray-900 mb-2">메뉴 삭제</h3>
+      <p id="delete-modal-text" class="text-sm text-gray-600 mb-6">정말로 이 메뉴와 포함된 모든 할 일을 삭제하시겠습니까?</p>
+      <div class="flex justify-end space-x-3">
+        <button id="modal-cancel-btn" class="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition">취소</button>
+        <button id="modal-confirm-btn" class="px-4 py-2 text-sm text-white bg-red-600 hover:bg-red-700 rounded-lg transition shadow-md">삭제</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // 🔐 비밀번호 설정
+    const CORRECT_PASSWORD = "9859"; 
+
+    // Supabase 설정
+    const SUPABASE_URL = 'https://whhmnutvzyqsnbffohqj.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndoaG1udXR2enlxc25iZmZvaHFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY4NTQ2OTYsImV4cCI6MjEwMjQzMDY5Nn0.yMVCwhuiJs_rtuf51zQty3yJfNXMHF2Oauy8y08_2Gc';
+    const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // DOM Element 참조 바인딩
+    const authOverlay = document.getElementById("auth-overlay");
+    const mainApp = document.getElementById("main-app");
+    const authPasswordInput = document.getElementById("auth-password-input");
+    const authSubmitBtn = document.getElementById("auth-submit-btn");
+    const authErrorMsg = document.getElementById("auth-error-msg");
+    const todoInput = document.getElementById("todo-input");
+    const btnUndoInput = document.getElementById("btn-undo-input");
+    const btnAddTodo = document.getElementById("btn-add-todo");
+    const todoListContainer = document.getElementById("todo-list");
+    const dividerBtnContainer = document.getElementById("divider-btn-container");
+    const btnAddDivider = document.getElementById("btn-add-divider");
+    const tabsContainer = document.getElementById("tabs-container");
+    const btnScrollLeft = document.getElementById("btn-scroll-left");
+    const btnScrollRight = document.getElementById("btn-scroll-right");
+    const btnAddTab = document.getElementById("btn-add-tab");
+    const addModal = document.getElementById("add-modal");
+    const addModalCancelBtn = document.getElementById("add-modal-cancel-btn");
+    const addModalConfirmBtn = document.getElementById("add-modal-confirm-btn");
+    const tabNameInput = document.getElementById("tab-name-input");
+    const modalTabList = document.getElementById("modal-tab-list");
+    const deleteModal = document.getElementById("delete-modal");
+    const modalCancelBtn = document.getElementById("modal-cancel-btn");
+    const modalConfirmBtn = document.getElementById("modal-confirm-btn");
+
+    function checkAuth() {
+      const isAuth = localStorage.getItem("app_authenticated");
+      if (isAuth === "true") {
+        authOverlay.classList.add("hidden");
+        mainApp.classList.remove("hidden");
+        initData();
+        return true;
+      } else {
+        authOverlay.classList.remove("hidden");
+        mainApp.classList.add("hidden");
+        authPasswordInput.focus();
+        return false;
+      }
+    }
+
+    function handleAuthSubmit() {
+      const inputVal = authPasswordInput.value.trim();
+      if (inputVal === CORRECT_PASSWORD) {
+        localStorage.setItem("app_authenticated", "true");
+        authErrorMsg.classList.add("hidden");
+        checkAuth();
+      } else {
+        authErrorMsg.classList.remove("hidden");
+        authPasswordInput.value = "";
+        authPasswordInput.focus();
+      }
+    }
+
+    authSubmitBtn.addEventListener("click", handleAuthSubmit);
+    authPasswordInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") handleAuthSubmit();
+    });
+
+    // App State
+    let tabs = [];
+    let activeTabId = "";
+    let todos = [];
+    let draggedTabIdx = null;
+    let draggedTodoId = null;
+    let tabToDeleteId = null;
+
+    // 모바일/PC 히스토리 관리 클래스
+    class TextUndoManager {
+      constructor(element, maxHistory = 50) {
+        this.element = element;
+        this.maxHistory = maxHistory;
+        this.history = [element.value || ""];
+        this.step = 0;
+        this.init();
+      }
+
+      init() {
+        this.element.addEventListener("input", () => {
+          const val = this.element.value;
+          if (val !== this.history[this.step]) {
+            this.history = this.history.slice(0, this.step + 1);
+            this.history.push(val);
+            if (this.history.length > this.maxHistory) {
+              this.history.shift();
+            } else {
+              this.step++;
+            }
+          }
+        });
+      }
+
+      undo() {
+        if (this.step > 0) {
+          this.step--;
+          this.element.value = this.history[this.step];
+          this.element.style.height = "auto";
+          this.element.style.height = this.element.scrollHeight + "px";
+          this.element.focus();
+          return true; // 되돌릴 이력이 남아있음
+        }
+        return false; // 초기 상태 도달
+      }
+
+      reset(initialText = "") {
+        this.history = [initialText];
+        this.step = 0;
+      }
+    }
+
+    // 메인 입력창 히스토리 매니저
+    const mainInputUndoManager = new TextUndoManager(todoInput);
+
+    // ⚡ 길게 누르면 연속 되돌리기 바인딩 함수
+    function bindPressAndHoldUndo(buttonEl, undoManager) {
+      let timer = null;
+      let interval = null;
+
+      const startUndo = () => {
+        undoManager.undo();
+        // 400ms 누르고 있으면 100ms 간격으로 연속 되돌리기
+        timer = setTimeout(() => {
+          interval = setInterval(() => {
+            const hasMore = undoManager.undo();
+            if (!hasMore) stopUndo();
+          }, 100);
+        }, 400);
+      };
+
+      const stopUndo = () => {
+        if (timer) clearTimeout(timer);
+        if (interval) clearInterval(interval);
+        timer = null;
+        interval = null;
+      };
+
+      // PC 마우스 및 모바일 터치 이벤트 핸들링
+      buttonEl.addEventListener("mousedown", (e) => {
+        e.preventDefault();
+        startUndo();
+      });
+
+      buttonEl.addEventListener("mouseup", stopUndo);
+      buttonEl.addEventListener("mouseleave", stopUndo);
+
+      buttonEl.addEventListener("touchstart", (e) => {
+        e.preventDefault();
+        startUndo();
+      });
+
+      buttonEl.addEventListener("touchend", stopUndo);
+      buttonEl.addEventListener("touchcancel", stopUndo);
+    }
+
+    // 메인 입력창 되돌리기 버튼 연속 동작 적용
+    bindPressAndHoldUndo(btnUndoInput, mainInputUndoManager);
+
+    // Auto resize input textarea
+    todoInput.addEventListener("input", () => {
+      todoInput.style.height = "auto";
+      todoInput.style.height = todoInput.scrollHeight + "px";
+    });
+
+    todoInput.addEventListener("keydown", async (e) => {
+      if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+        e.preventDefault();
+        const val = todoInput.value.trim();
+        if (val) {
+          await createTodo(val, false);
+          todoInput.value = "";
+          todoInput.style.height = "auto";
+          mainInputUndoManager.reset("");
+        }
+      } else if (e.key === "Escape") {
+        e.preventDefault();
+        todoInput.value = "";
+        todoInput.style.height = "auto";
+        mainInputUndoManager.reset("");
+      }
+    });
+
+    // 데이터 초기화 및 실시간 동기화 설정
+    async function initData() {
+      await fetchTabs();
+      await fetchTodos();
+
+      _supabase
+        .channel('public-db-changes')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'tabs' }, () => {
+          fetchTabs();
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'todos' }, () => {
+          fetchTodos();
+        })
+        .subscribe();
+    }
+
+    // Supabase에서 메뉴(Tabs) 불러오기
+    async function fetchTabs() {
+      const { data, error } = await _supabase
+        .from('tabs')
+        .select('*')
+        .order('order', { ascending: true });
+
+      if (error) {
+        console.error("Tabs 불러오기 실패:", error);
+        return;
+      }
+
+      tabs = data || [];
+
+      if (tabs.length > 0) {
+        if (!activeTabId || !tabs.some(t => t.id === activeTabId)) {
+          activeTabId = tabs[0].id;
+        }
+      } else {
+        activeTabId = "";
+      }
+
+      renderTabs();
+      renderModalTabList();
+      checkTabOverflow();
+    }
+
+    // Supabase에서 Todo 목록 불러오기
+    async function fetchTodos() {
+      const { data, error } = await _supabase
+        .from('todos')
+        .select('*')
+        .order('order', { ascending: true });
+
+      if (error) {
+        console.error("Todos 불러오기 실패:", error);
+        return;
+      }
+
+      todos = (data || []).map(t => ({
+        id: t.id,
+        tabId: t.tab_id,
+        text: t.text,
+        completed: t.completed,
+        isDivider: t.is_divider,
+        order: t.order,
+        createdAt: t.created_at
+      }));
+
+      renderTodos();
+    }
+
+    // Render Tabs UI
+    function renderTabs() {
+      tabsContainer.innerHTML = "";
+      
+      tabs.forEach((tab, index) => {
+        const isActive = tab.id === activeTabId;
+        const tabEl = document.createElement("div");
+        tabEl.className = `flex items-center px-3 py-1 rounded-lg font-medium text-xs sm:text-sm transition cursor-pointer select-none shrink-0 border border-transparent box-border ${
+          isActive 
+            ? "bg-blue-600 text-white shadow-sm" 
+            : "bg-white text-gray-600 hover:bg-gray-100 hover:text-gray-900 border-gray-200"
+        }`;
+        tabEl.draggable = true;
+
+        tabEl.addEventListener("dragstart", (e) => {
+          draggedTabIdx = index;
+          e.dataTransfer.effectAllowed = "move";
+        });
+
+        tabEl.addEventListener("dragover", (e) => {
+          e.preventDefault();
+          const rect = tabEl.getBoundingClientRect();
+          const midPoint = rect.left + rect.width / 2;
+          
+          tabEl.classList.remove("drag-line-left", "drag-line-right");
+          if (e.clientX < midPoint) {
+            tabEl.classList.add("drag-line-left");
+          } else {
+            tabEl.classList.add("drag-line-right");
+          }
+        });
+
+        tabEl.addEventListener("dragleave", () => {
+          tabEl.classList.remove("drag-line-left", "drag-line-right");
+        });
+
+        tabEl.addEventListener("drop", async (e) => {
+          e.preventDefault();
+          const isLeft = tabEl.classList.contains("drag-line-left");
+          tabEl.classList.remove("drag-line-left", "drag-line-right");
+
+          if (draggedTabIdx === null || draggedTabIdx === index) return;
+
+          const reordered = [...tabs];
+          const draggedTab = reordered[draggedTabIdx];
+          const targetTab = reordered[index];
+
+          reordered.splice(draggedTabIdx, 1);
+
+          let insertIdx = reordered.findIndex(t => t.id === targetTab.id);
+          if (!isLeft) insertIdx += 1;
+
+          reordered.splice(insertIdx, 0, draggedTab);
+
+          for (let i = 0; i < reordered.length; i++) {
+            await _supabase
+              .from('tabs')
+              .update({ order: i + 1 })
+              .eq('id', reordered[i].id);
+          }
+
+          draggedTabIdx = null;
+          await fetchTabs();
+        });
+
+        tabEl.addEventListener("click", () => {
+          if (activeTabId !== tab.id) {
+            activeTabId = tab.id;
+            renderTabs();
+            renderTodos();
+          }
+        });
+
+        const titleSpan = document.createElement("span");
+        titleSpan.textContent = tab.name;
+        tabEl.appendChild(titleSpan);
+
+        tabsContainer.appendChild(tabEl);
+      });
+
+      checkTabOverflow();
+    }
+
+    // Modal 내 메뉴 목록 및 삭제 버튼 렌더링
+    function renderModalTabList() {
+      if (!modalTabList) return;
+      modalTabList.innerHTML = "";
+
+      tabs.forEach(tab => {
+        const item = document.createElement("div");
+        item.className = "flex items-center justify-between p-2 rounded-lg bg-gray-50 text-xs text-gray-700";
+        
+        const nameSpan = document.createElement("span");
+        nameSpan.className = "font-medium";
+        nameSpan.textContent = tab.name;
+
+        const delBtn = document.createElement("button");
+        delBtn.className = "text-gray-400 hover:text-red-500 transition p-1";
+        delBtn.innerHTML = `<i class="ph ph-trash text-sm"></i>`;
+        delBtn.title = "삭제";
+
+        delBtn.addEventListener("click", () => {
+          openDeleteModal(tab.id, tab.name);
+        });
+
+        item.appendChild(nameSpan);
+        item.appendChild(delBtn);
+        modalTabList.appendChild(item);
+      });
+    }
+
+    // Tab Management Modal Handlers
+    function openAddModal() {
+      tabNameInput.value = "";
+      addModal.classList.remove("hidden");
+      addModal.classList.add("flex");
+      renderModalTabList();
+      tabNameInput.focus();
+    }
+
+    function closeAddModal() {
+      addModal.classList.add("hidden");
+      addModal.classList.remove("flex");
+      tabNameInput.value = "";
+    }
+
+    async function handleAddTab() {
+      const name = tabNameInput.value.trim();
+      if (name) {
+        const customId = 'tab_' + Date.now();
+        const nextOrder = tabs.length > 0 ? Math.max(...tabs.map(t => t.order || 0)) + 1 : 1;
+
+        const { error } = await _supabase
+          .from('tabs')
+          .insert({
+            id: customId,
+            name: name,
+            order: nextOrder
+          });
+
+        if (!error) {
+          activeTabId = customId;
+          tabNameInput.value = "";
+          closeAddModal();
+          await fetchTabs();
+        } else {
+          console.error("메뉴 추가 오류:", error);
+        }
+      }
+    }
+
+    btnAddTab.addEventListener("click", openAddModal);
+    addModalCancelBtn.addEventListener("click", closeAddModal);
+    addModalConfirmBtn.addEventListener("click", handleAddTab);
+    tabNameInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") handleAddTab();
+      if (e.key === "Escape") closeAddModal();
+    });
+
+    // Delete Tab Modal Handlers
+    function openDeleteModal(tabId, tabName) {
+      tabToDeleteId = tabId;
+      document.getElementById("delete-modal-text").textContent = `'${tabName}' 메뉴와 포함된 모든 할 일을 삭제하시겠습니까?`;
+      deleteModal.classList.remove("hidden");
+      deleteModal.classList.add("flex");
+    }
+
+    modalCancelBtn.addEventListener("click", () => {
+      deleteModal.classList.add("hidden");
+      deleteModal.classList.remove("flex");
+      tabToDeleteId = null;
+    });
+
+    modalConfirmBtn.addEventListener("click", async () => {
+      if (tabToDeleteId) {
+        await _supabase
+          .from('tabs')
+          .delete()
+          .eq('id', tabToDeleteId);
+
+        deleteModal.classList.add("hidden");
+        deleteModal.classList.remove("flex");
+        tabToDeleteId = null;
+        await fetchTabs();
+        await fetchTodos();
+      }
+    });
+
+    // Check Tab Overflow for Scroll Buttons
+    function checkTabOverflow() {
+      const hasOverflow = tabsContainer.scrollWidth > tabsContainer.clientWidth;
+      if (hasOverflow) {
+        btnScrollLeft.classList.remove("hidden");
+        btnScrollRight.classList.remove("hidden");
+      } else {
+        btnScrollLeft.classList.add("hidden");
+        btnScrollRight.classList.add("hidden");
+      }
+    }
+
+    btnScrollLeft.addEventListener("click", () => {
+      tabsContainer.scrollBy({ left: -150, behavior: "smooth" });
+    });
+    btnScrollRight.addEventListener("click", () => {
+      tabsContainer.scrollBy({ left: 150, behavior: "smooth" });
+    });
+    window.addEventListener("resize", checkTabOverflow);
+
+    // Create Todo / Divider Function
+    async function createTodo(text, isDivider = false) {
+      if (!activeTabId) return;
+      
+      const currentTabTodos = todos.filter(t => t.tabId === activeTabId);
+      const newOrder = currentTabTodos.length > 0 
+        ? Math.max(...currentTabTodos.map(t => t.order || 0)) + 1 
+        : 1;
+
+      const { error } = await _supabase
+        .from('todos')
+        .insert({
+          tab_id: activeTabId,
+          text: text,
+          completed: false,
+          is_divider: isDivider,
+          order: newOrder
+        });
+
+      if (!error) {
+        await fetchTodos();
+      }
+    }
+
+    // Add Todo Button Click
+    btnAddTodo.addEventListener("click", async () => {
+      const val = todoInput.value.trim();
+      if (val) {
+        await createTodo(val, false);
+        todoInput.value = "";
+        todoInput.style.height = "auto";
+        mainInputUndoManager.reset("");
+      }
+    });
+
+    // Add Divider Button Click
+    btnAddDivider.addEventListener("click", async () => {
+      await createTodo("", true);
+    });
+
+    // Render Todos UI
+    function renderTodos() {
+      todoListContainer.innerHTML = "";
+      const currentTodos = todos.filter(t => t.tabId === activeTabId);
+
+      if (currentTodos.length === 0) {
+        dividerBtnContainer.classList.add("hidden");
+        todoListContainer.innerHTML = `
+          <div class="text-center py-10 text-gray-400 text-xs sm:text-sm">
+            등록된 할 일이 없습니다. 상단에서 내용을 입력해 보세요!
+          </div>
+        `;
+        return;
+      } else {
+        dividerBtnContainer.classList.remove("hidden");
+      }
+
+      currentTodos.forEach((item) => {
+        const itemEl = document.createElement("div");
+        
+        if (item.isDivider) {
+          itemEl.className = "group flex items-center gap-1.5 pl-0 pr-1 py-0 rounded-lg hover:bg-gray-100/70 transition relative h-5";
+        } else {
+          itemEl.className = "group flex items-start gap-1.5 pl-0 pr-1 py-0.5 rounded-lg hover:bg-gray-100/70 transition relative";
+        }
+        itemEl.draggable = true;
+
+        itemEl.addEventListener("dragstart", (e) => {
+          draggedTodoId = item.id;
+          e.dataTransfer.effectAllowed = "move";
+        });
+
+        itemEl.addEventListener("dragover", (e) => {
+          e.preventDefault();
+          const rect = itemEl.getBoundingClientRect();
+          const midPoint = rect.top + rect.height / 2;
+          
+          itemEl.classList.remove("drag-line-top", "drag-line-bottom");
+          if (e.clientY < midPoint) {
+            itemEl.classList.add("drag-line-top");
+          } else {
+            itemEl.classList.add("drag-line-bottom");
+          }
+        });
+
+        itemEl.addEventListener("dragleave", () => {
+          itemEl.classList.remove("drag-line-top", "drag-line-bottom");
+        });
+
+        itemEl.addEventListener("drop", async (e) => {
+          e.preventDefault();
+          const isTop = itemEl.classList.contains("drag-line-top");
+          itemEl.classList.remove("drag-line-top", "drag-line-bottom");
+
+          if (!draggedTodoId || draggedTodoId === item.id) return;
+
+          const activeTodos = [...todos.filter(t => t.tabId === activeTabId)];
+          const draggedIdx = activeTodos.findIndex(t => t.id === draggedTodoId);
+          const targetIdx = activeTodos.findIndex(t => t.id === item.id);
+
+          if (draggedIdx === -1 || targetIdx === -1) return;
+
+          const [draggedItem] = activeTodos.splice(draggedIdx, 1);
+          let insertIdx = activeTodos.findIndex(t => t.id === item.id);
+          if (!isTop) insertIdx += 1;
+
+          activeTodos.splice(insertIdx, 0, draggedItem);
+
+          for (let i = 0; i < activeTodos.length; i++) {
+            await _supabase
+              .from('todos')
+              .update({ order: i + 1 })
+              .eq('id', activeTodos[i].id);
+          }
+
+          draggedTodoId = null;
+          await fetchTodos();
+        });
+
+        if (item.isDivider) {
+          // Divider
+          const dividerContent = document.createElement("div");
+          dividerContent.className = "flex-1 border-b-2 border-gray-200/90";
+          itemEl.appendChild(dividerContent);
+        } else {
+          // Checkbox
+          const checkboxBtn = document.createElement("button");
+          checkboxBtn.className = "pt-0.5 text-gray-400 hover:text-blue-600 transition shrink-0";
+          checkboxBtn.innerHTML = item.completed
+            ? `<i class="ph-fill ph-check-square text-base text-blue-600"></i>`
+            : `<i class="ph ph-square text-base"></i>`;
+          
+          checkboxBtn.addEventListener("click", async () => {
+            await _supabase
+              .from('todos')
+              .update({ completed: !item.completed })
+              .eq('id', item.id);
+            await fetchTodos();
+          });
+          itemEl.appendChild(checkboxBtn);
+
+          // Todo Content Container
+          const textContainer = document.createElement("div");
+          textContainer.className = "flex-1 min-w-0";
+
+          // 글자 영역 스팬
+          const textEl = document.createElement("span");
+          textEl.className = `inline-block text-sm sm:text-sm whitespace-pre-wrap break-words cursor-pointer py-0 leading-snug ${
+            item.completed ? "line-through text-gray-400" : "text-gray-800"
+          }`;
+          textEl.textContent = item.text;
+
+          // 삭제 모드 편집창 전환
+          textEl.addEventListener("click", (e) => {
+            e.stopPropagation();
+
+            const editWrapper = document.createElement("div");
+            editWrapper.className = "flex items-center gap-1 w-full";
+
+            const editTextarea = document.createElement("textarea");
+            editTextarea.className = "flex-1 p-1.5 text-sm sm:text-sm border border-blue-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 whitespace-pre-wrap resize-none overflow-hidden leading-snug";
+            editTextarea.value = item.text;
+
+            // 수정 창 전용 되돌리기 버튼
+            const editUndoBtn = document.createElement("button");
+            editUndoBtn.className = "px-2 py-1.5 bg-gray-100 text-gray-600 rounded-lg border border-gray-300 hover:bg-gray-200 transition shrink-0 select-none";
+            editUndoBtn.innerHTML = `<i class="ph ph-arrow-u-up-left text-base"></i>`;
+            editUndoBtn.title = "길게 누르면 연속 되돌리기";
+
+            editWrapper.appendChild(editTextarea);
+            editWrapper.appendChild(editUndoBtn);
+
+            const editUndoManager = new TextUndoManager(editTextarea);
+
+            // 수정창 전용 되돌리기에도 길게 누르기 바인딩
+            bindPressAndHoldUndo(editUndoBtn, editUndoManager);
+
+            const adjustHeight = () => {
+              editTextarea.style.height = "auto";
+              editTextarea.style.height = editTextarea.scrollHeight + "px";
+            };
+
+            textContainer.replaceChild(editWrapper, textEl);
+            adjustHeight();
+            editTextarea.focus();
+            
+            editTextarea.setSelectionRange(editTextarea.value.length, editTextarea.value.length);
+
+            editTextarea.addEventListener("input", adjustHeight);
+
+            let isSaved = false;
+
+            const saveEdit = async () => {
+              if (isSaved) return;
+              isSaved = true;
+              const newText = editTextarea.value.trim();
+              if (newText && newText !== item.text) {
+                await _supabase
+                  .from('todos')
+                  .update({ text: newText })
+                  .eq('id', item.id);
+                await fetchTodos();
+              } else {
+                renderTodos();
+              }
+            };
+
+            editTextarea.addEventListener("blur", (e) => {
+              if (e.relatedTarget !== editUndoBtn) {
+                saveEdit();
+              }
+            });
+
+            editTextarea.addEventListener("keydown", (e) => {
+              if (e.key === "Escape") {
+                isSaved = true;
+                renderTodos();
+              } else if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+                saveEdit();
+              }
+            });
+          });
+
+          textContainer.appendChild(textEl);
+          itemEl.appendChild(textContainer);
+        }
+
+        // Delete Todo Item Button
+        const deleteBtn = document.createElement("button");
+        deleteBtn.className = "text-gray-300 hover:text-red-500 transition shrink-0 opacity-0 group-hover:opacity-100 px-0.5";
+        deleteBtn.innerHTML = `<i class="ph ph-trash text-base"></i>`;
+        deleteBtn.title = "삭제";
+        deleteBtn.addEventListener("click", async () => {
+          await _supabase
+            .from('todos')
+            .delete()
+            .eq('id', item.id);
+          await fetchTodos();
+        });
+
+        itemEl.appendChild(deleteBtn);
+        todoListContainer.appendChild(itemEl);
+      });
+    }
+
+    // Run auth check on load
+    document.addEventListener("DOMContentLoaded", checkAuth);
+  </script>
+</body>
+</html>
