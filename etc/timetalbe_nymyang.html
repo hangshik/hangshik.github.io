@@ -306,19 +306,6 @@
         .section-title { font-size: 1.2rem; font-weight: bold; color: var(--dark-blue); margin: 0 0 15px 0; border-bottom: 2px solid #e9ecef; padding-bottom: 8px; }
         .logout-btn { background: #868e96; color: white; border: none; padding: 10px; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 0.9rem; margin-top: auto; }
 
-        .option-row {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 14px 16px;
-            background: #f8f9fa;
-            border: 1px solid #e9ecef;
-            border-radius: 12px;
-            margin-bottom: 15px;
-        }
-        .option-row label { font-size: 1.05rem; font-weight: bold; color: var(--text-dark); cursor: pointer; }
-        .option-row input[type="checkbox"] { width: 20px; height: 20px; cursor: pointer; }
-
         .subject-edit-box {
             background: #f8f9fa;
             border: 1px solid #e9ecef;
@@ -389,12 +376,6 @@
             <div id="tab-general" class="tab-panel active">
                 <div class="section-title">당일 시간표 초기화</div>
                 <button class="reset-today-btn" onclick="resetTodayTimetable()">↺ 오늘 수정했던 시간표 원래대로 복구</button>
-
-                <div class="section-title" style="margin-top: 30px;">기본 동작 설정</div>
-                <div class="option-row">
-                    <label for="fullscreen-toggle">🖥️ 화면 터치/클릭 시 자동으로 전체화면 전환</label>
-                    <input type="checkbox" id="fullscreen-toggle" onchange="toggleFullscreenSetting(this.checked)">
-                </div>
             </div>
 
             <!-- 탭 2: 요일별 시간표 관리 -->
@@ -490,21 +471,6 @@
 
     let dbCustomSubjects = { ...DEFAULT_SUBJECTS };
 
-    function setupFullscreenListener() {
-        const triggerFullscreen = () => {
-            const useFullscreen = localStorage.getItem('use_fullscreen') === 'true';
-            if (useFullscreen && !document.fullscreenElement) {
-                var el = document.documentElement;
-                try {
-                    if (el.requestFullscreen) el.requestFullscreen().catch(()=>{});
-                    else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen().catch(()=>{});
-                } catch(e) {}
-            }
-        };
-
-        window.addEventListener('click', triggerFullscreen, { once: false });
-    }
-
     function handleMouseMove() {
         document.body.classList.remove('hide-cursor');
         clearTimeout(mouseTimer);
@@ -512,7 +478,6 @@
     }
 
     async function init() {
-        setupFullscreenListener();
         document.addEventListener("mousemove", handleMouseMove);
         window.addEventListener('mouseup', endDrag);
 
@@ -853,9 +818,6 @@
         document.getElementById('settings-modal').style.display = 'block';
         document.getElementById('overlay').style.display = 'block';
 
-        const useFullscreen = localStorage.getItem('use_fullscreen') === 'true';
-        document.getElementById('fullscreen-toggle').checked = useFullscreen;
-
         const adminElements = document.querySelectorAll('.admin-only');
         if (authLevel === 'FULL_ADMIN') {
             adminElements.forEach(el => el.style.display = 'block');
@@ -921,10 +883,6 @@
         } else {
             alert('저장 중 오류가 발생했습니다: ' + error.message);
         }
-    }
-
-    function toggleFullscreenSetting(isTrue) {
-        localStorage.setItem('use_fullscreen', isTrue ? 'true' : 'false');
     }
 
     function logout() {
