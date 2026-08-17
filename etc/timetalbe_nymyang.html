@@ -43,7 +43,6 @@
             position: relative;
         }
         
-        /* 날짜/시계 클릭 가능하도록 스타일 추가 */
         #clock { 
             font-size: 3.5rem; 
             font-weight: 800; 
@@ -180,7 +179,6 @@
             overflow-y: auto; 
         }
 
-        /* 설정 모달 레이아웃 */
         #settings-modal {
             max-width: 900px;
             padding: 0;
@@ -322,7 +320,6 @@
 <body>
 
 <header>
-    <!-- 시계 영역 클릭 시 설정 호출 -->
     <div id="clock" onclick="handleSettingsClick()" title="클릭하여 설정 열기">로딩 중...</div>
 </header>
 
@@ -344,7 +341,7 @@
 <!-- 오버레이 -->
 <div id="overlay" class="overlay" onclick="closeAllModals()"></div>
 
-<!-- 메인 시간표 과목 수정 모달 -->
+<!-- 과목 수정 모달 -->
 <div id="modal" class="modal">
     <span class="modal-close-icon" onclick="closeModal()">✕</span>
     <h3 id="modal-header" style="margin-bottom:20px; text-align:center; font-size: 1.8rem; color: var(--dark-blue);">과목 수정</h3>
@@ -365,7 +362,6 @@
 <div id="settings-modal" class="modal">
     <span class="modal-close-icon" onclick="closeSettingsModal()">✕</span>
     <div class="settings-layout">
-        <!-- 좌측 사이드바 메뉴 -->
         <div class="settings-sidebar">
             <h3>⚙️ 시스템 설정</h3>
             <div class="nav-item active" onclick="switchTab('tab-general', this)">⚙️ 기본 설정</div>
@@ -375,7 +371,6 @@
             <button class="logout-btn" onclick="logout()">🔒 인증 해제</button>
         </div>
 
-        <!-- 우측 상세 설정 페이지 -->
         <div class="settings-content">
             <!-- 탭 1: 기본 설정 -->
             <div id="tab-general" class="tab-panel active">
@@ -389,7 +384,7 @@
                 </div>
             </div>
 
-            <!-- 탭 2: 요일별 시간표 관리 (관리자 전용) -->
+            <!-- 탭 2: 요일별 시간표 관리 -->
             <div id="tab-weekly" class="tab-panel">
                 <div class="section-title">📅 요일별 교시 및 방과후 기본 과목 설정</div>
                 <div class="day-btn-group">
@@ -414,7 +409,7 @@
                 <button class="save-btn" onclick="saveWeeklyTimetable()">선택 요일 과목 저장</button>
             </div>
 
-            <!-- 탭 3: 교시 시간대 관리 (관리자 전용) -->
+            <!-- 탭 3: 교시 시간대 관리 -->
             <div id="tab-schedule" class="tab-panel">
                 <div class="section-title">⏰ 교시별 시작/종료 시간 설정</div>
                 <table class="editor-table">
@@ -430,9 +425,9 @@
                 <button class="save-btn" onclick="saveScheduleTimes()">교시 시간대 저장</button>
             </div>
 
-            <!-- 탭 4: 학년별/방과후 과목 목록 설정 (관리자 전용) -->
+            <!-- 탭 4: 학년별/방과후 과목 목록 설정 (Supabase 연동) -->
             <div id="tab-subjects" class="tab-panel">
-                <div class="section-title">📚 학년 및 방과후 별 수정 과목 선택 버튼 설정</div>
+                <div class="section-title">📚 학년 및 방과후 별 수정 과목 선택 버튼 설정 (Supabase 데이터베이스 연동)</div>
                 <p style="font-size: 0.9rem; color: #666; margin-bottom: 15px;">각 항목에 쉼표(,)로 구분하여 빠르게 선택할 과목들을 입력하세요.</p>
                 
                 <div class="subject-edit-box">
@@ -472,6 +467,7 @@
     let startCell = null, isDragging = false, selectedCells = [];
     let mouseTimer;
 
+    // Supabase에 데이터가 없을 경우 기본값
     const DEFAULT_SUBJECTS = {
         g1: ["국어", "영어", "수학", "사회", "과학", "도덕", "기가", "체육", "미술", "음악", "진로", "자율", "방과후"],
         g2: ["국어", "영어", "수학", "역사", "과학", "도덕", "기가", "체육", "미술", "음악", "진로", "자율", "방과후"],
@@ -479,7 +475,8 @@
         afterschool: ["컴퓨터", "축구", "배드민턴", "미술", "음악", "방송댄스", "수학탐구", "영어회화"]
     };
 
-    // 브라우저 정책 준수: 사용자 인터랙션(클릭) 발생 시 전체화면 전환
+    let dbCustomSubjects = { ...DEFAULT_SUBJECTS };
+
     function setupFullscreenListener() {
         const triggerFullscreen = () => {
             const useFullscreen = localStorage.getItem('use_fullscreen') === 'true';
@@ -529,6 +526,25 @@
         if (dayIdx < 0 || dayIdx > 4) dayIdx = 0;
         const todayStr = now.toISOString().split('T')[0];
 
+        // 1. 과목 구성 데이터 (subject_config) 조회
+        const { data: configData } = await supabaseClient
+            .from('timetable_namyang')
+            .select('*')
+            .eq('type', 'subject_config');
+
+        if (configData && configData.length > 0) {
+            configData.forEach(item => {
+                if (item.subject_name) {
+                    const list = item.subject_name.split(',').map(s => s.trim()).filter(s => s.length > 0);
+                    if (item.grade === 1) dbCustomSubjects.g1 = list;
+                    else if (item.grade === 2) dbCustomSubjects.g2 = list;
+                    else if (item.grade === 3) dbCustomSubjects.g3 = list;
+                    else if (item.grade === 99) dbCustomSubjects.afterschool = list; // 99: 방과후
+                }
+            });
+        }
+
+        // 2. 시간대 데이터 조회
         const { data: timesData } = await supabaseClient
             .from('timetable_namyang')
             .select('*')
@@ -556,6 +572,7 @@
             ];
         }
 
+        // 3. 요일별 기본 시간표 조회
         const { data: weeklyData } = await supabaseClient
             .from('timetable_namyang')
             .select('*')
@@ -574,6 +591,7 @@
             });
         }
 
+        // 4. 당일 시간표 변경사항 조회
         const { data: overridesData } = await supabaseClient
             .from('timetable_namyang')
             .select('*')
@@ -659,14 +677,6 @@
 
     function clearSelection() { document.querySelectorAll('.subject-cell').forEach(c => c.classList.remove('selected')); }
 
-    function getCustomSubjects() {
-        const saved = localStorage.getItem('custom_subjects');
-        if (saved) {
-            try { return JSON.parse(saved); } catch(e) {}
-        }
-        return DEFAULT_SUBJECTS;
-    }
-
     function openModal() {
         const modal = document.getElementById('modal'), overlay = document.getElementById('overlay');
         const header = document.getElementById('modal-header');
@@ -679,17 +689,16 @@
         input.value = textInCell;
         btnGroup.innerHTML = '';
 
-        const subjectsConfig = getCustomSubjects();
         let opts = [];
 
         if (textInCell === "방과후" || originalText === "방과후") {
             header.innerText = "방과후 과목 수정";
-            opts = subjectsConfig.afterschool || DEFAULT_SUBJECTS.afterschool;
+            opts = dbCustomSubjects.afterschool || DEFAULT_SUBJECTS.afterschool;
         } else {
             header.innerText = `${gradeIdx + 1}학년 과목 수정`;
-            if (gradeIdx === 0) opts = subjectsConfig.g1 || DEFAULT_SUBJECTS.g1;
-            else if (gradeIdx === 1) opts = subjectsConfig.g2 || DEFAULT_SUBJECTS.g2;
-            else if (gradeIdx === 2) opts = subjectsConfig.g3 || DEFAULT_SUBJECTS.g3;
+            if (gradeIdx === 0) opts = dbCustomSubjects.g1 || DEFAULT_SUBJECTS.g1;
+            else if (gradeIdx === 1) opts = dbCustomSubjects.g2 || DEFAULT_SUBJECTS.g2;
+            else if (gradeIdx === 2) opts = dbCustomSubjects.g3 || DEFAULT_SUBJECTS.g3;
         }
 
         opts.forEach(opt => {
@@ -823,25 +832,45 @@
     }
 
     function loadSubjectSettingsInputs() {
-        const subs = getCustomSubjects();
-        document.getElementById('subj-g1-input').value = (subs.g1 || DEFAULT_SUBJECTS.g1).join(', ');
-        document.getElementById('subj-g2-input').value = (subs.g2 || DEFAULT_SUBJECTS.g2).join(', ');
-        document.getElementById('subj-g3-input').value = (subs.g3 || DEFAULT_SUBJECTS.g3).join(', ');
-        document.getElementById('subj-after-input').value = (subs.afterschool || DEFAULT_SUBJECTS.afterschool).join(', ');
+        document.getElementById('subj-g1-input').value = (dbCustomSubjects.g1 || DEFAULT_SUBJECTS.g1).join(', ');
+        document.getElementById('subj-g2-input').value = (dbCustomSubjects.g2 || DEFAULT_SUBJECTS.g2).join(', ');
+        document.getElementById('subj-g3-input').value = (dbCustomSubjects.g3 || DEFAULT_SUBJECTS.g3).join(', ');
+        document.getElementById('subj-after-input').value = (dbCustomSubjects.afterschool || DEFAULT_SUBJECTS.afterschool).join(', ');
     }
 
-    function saveSubjectSettings() {
-        const parseInput = (id) => document.getElementById(id).value.split(',').map(s => s.trim()).filter(s => s.length > 0);
-        
-        const newSubjects = {
-            g1: parseInput('subj-g1-input'),
-            g2: parseInput('subj-g2-input'),
-            g3: parseInput('subj-g3-input'),
-            afterschool: parseInput('subj-after-input')
-        };
+    // Supabase에 학년별 및 방과후 과목 데이터 저장
+    async function saveSubjectSettings() {
+        const getJoinedString = (id) => document.getElementById(id).value.split(',').map(s => s.trim()).filter(s => s.length > 0).join(',');
 
-        localStorage.setItem('custom_subjects', JSON.stringify(newSubjects));
-        alert('학년별 및 방과후 과목 목록이 저장되었습니다.');
+        const configs = [
+            { grade: 1, text: getJoinedString('subj-g1-input') },
+            { grade: 2, text: getJoinedString('subj-g2-input') },
+            { grade: 3, text: getJoinedString('subj-g3-input') },
+            { grade: 99, text: getJoinedString('subj-after-input') } // 99: 방과후 식별용
+        ];
+
+        // 기존 설정 삭제 후 새 설정 저장
+        await supabaseClient
+            .from('timetable_namyang')
+            .delete()
+            .eq('type', 'subject_config');
+
+        const inserts = configs.map(cfg => ({
+            type: 'subject_config',
+            grade: cfg.grade,
+            subject_name: cfg.text
+        }));
+
+        const { error } = await supabaseClient
+            .from('timetable_namyang')
+            .insert(inserts);
+
+        if (!error) {
+            alert('Supabase 데이터베이스에 과목 목록이 성공적으로 저장되었습니다.');
+            await loadTimetableFromSupabase();
+        } else {
+            alert('저장 중 오류가 발생했습니다: ' + error.message);
+        }
     }
 
     function toggleFullscreenSetting(isTrue) {
@@ -864,7 +893,7 @@
         const tbody = document.getElementById('weekly-editor-body');
         tbody.innerHTML = '<tr><td colspan="4" style="padding:15px; color:#666;">데이터를 불러오는 중입니다...</td></tr>';
 
-        const { data: weeklyData, error } = await supabaseClient
+        const { data: weeklyData } = await supabaseClient
             .from('timetable_namyang')
             .select('*')
             .eq('type', 'weekly')
