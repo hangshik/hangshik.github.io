@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="robots" content="noindex, nofollow">
   <title>To Do List</title>
-        <!-- Google tag (gtag.js) -->
+  <!-- Google tag (gtag.js) -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-VHD0QPH39L"></script>
   <script>
     window.dataLayer = window.dataLayer || [];
@@ -13,6 +13,15 @@
     gtag('js', new Date());
     gtag('config', 'G-VHD0QPH39L');
   </script>
+
+  <!-- 📱 모바일 앱 전체 화면(Stand-alone) 관련 설정 -->
+  <!-- iOS (아이폰/아이패드) 설정 -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="To Do List">
+
+  <!-- 안드로이드 / 웹 앱 매니페스트 (Data URL 방식) -->
+  <link rel="manifest" href="data:application/json;charset=utf-8,%7B%22name%22%3A%22To%20Do%20List%22%2C%22short_name%22%3A%22ToDo%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%23f3f4f6%22%2C%22theme_color%22%3A%22%233b82f6%22%7D">
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Phosphor Icons -->
@@ -41,6 +50,10 @@
     }
     .drag-line-right {
       border-right: 3px solid #3b82f6 !important;
+    }
+    /* Touch drag ghost styling */
+    .touch-dragging {
+      opacity: 0.5;
     }
   </style>
 </head>
@@ -271,6 +284,54 @@
     let draggedTodoId = null;
     let tabToDeleteId = null;
 
+    // 🚀 자동 스크롤 매니저 (Vertical & Horizontal Auto-Scroll)
+    let autoScrollInterval = null;
+
+    function handleAutoScroll(clientY, clientX) {
+      const scrollThreshold = 70; // 가장자리 감지 영역 (px)
+      const maxScrollSpeed = 15;   // 스크롤 속도
+
+      let scrollYDelta = 0;
+      let scrollXDelta = 0;
+
+      // Vertical Window Scroll Check
+      if (clientY < scrollThreshold) {
+        scrollYDelta = -maxScrollSpeed * (1 - clientY / scrollThreshold);
+      } else if (window.innerHeight - clientY < scrollThreshold) {
+        scrollYDelta = maxScrollSpeed * (1 - (window.innerHeight - clientY) / scrollThreshold);
+      }
+
+      // Horizontal Tabs Scroll Check
+      if (tabsContainer) {
+        const rect = tabsContainer.getBoundingClientRect();
+        if (clientY >= rect.top && clientY <= rect.bottom) {
+          if (clientX - rect.left < scrollThreshold) {
+            scrollXDelta = -12;
+          } else if (rect.right - clientX < scrollThreshold) {
+            scrollXDelta = 12;
+          }
+        }
+      }
+
+      if (scrollYDelta !== 0 || scrollXDelta !== 0) {
+        if (!autoScrollInterval) {
+          autoScrollInterval = setInterval(() => {
+            if (scrollYDelta !== 0) window.scrollBy(0, scrollYDelta);
+            if (scrollXDelta !== 0 && tabsContainer) tabsContainer.scrollBy({ left: scrollXDelta });
+          }, 16);
+        }
+      } else {
+        stopAutoScroll();
+      }
+    }
+
+    function stopAutoScroll() {
+      if (autoScrollInterval) {
+        clearInterval(autoScrollInterval);
+        autoScrollInterval = null;
+      }
+    }
+
     // 모바일/PC 히스토리 관리 클래스
     class TextUndoManager {
       constructor(element, maxHistory = 50) {
@@ -303,9 +364,9 @@
           this.element.style.height = "auto";
           this.element.style.height = this.element.scrollHeight + "px";
           this.element.focus();
-          return true; // 되돌릴 이력이 남아있음
+          return true;
         }
-        return false; // 초기 상태 도달
+        return false;
       }
 
       reset(initialText = "") {
@@ -314,17 +375,14 @@
       }
     }
 
-    // 메인 입력창 히스토리 매니저
     const mainInputUndoManager = new TextUndoManager(todoInput);
 
-    // ⚡ 길게 누르면 연속 되돌리기 바인딩 함수
     function bindPressAndHoldUndo(buttonEl, undoManager) {
       let timer = null;
       let interval = null;
 
       const startUndo = () => {
         undoManager.undo();
-        // 400ms 누르고 있으면 100ms 간격으로 연속 되돌리기
         timer = setTimeout(() => {
           interval = setInterval(() => {
             const hasMore = undoManager.undo();
@@ -340,7 +398,6 @@
         interval = null;
       };
 
-      // PC 마우스 및 모바일 터치 이벤트 핸들링
       buttonEl.addEventListener("mousedown", (e) => {
         e.preventDefault();
         startUndo();
@@ -358,10 +415,8 @@
       buttonEl.addEventListener("touchcancel", stopUndo);
     }
 
-    // 메인 입력창 되돌리기 버튼 연속 동작 적용
     bindPressAndHoldUndo(btnUndoInput, mainInputUndoManager);
 
-    // Auto resize input textarea
     todoInput.addEventListener("input", () => {
       todoInput.style.height = "auto";
       todoInput.style.height = todoInput.scrollHeight + "px";
@@ -385,7 +440,6 @@
       }
     });
 
-    // 데이터 초기화 및 실시간 동기화 설정
     async function initData() {
       await fetchTabs();
       await fetchTodos();
@@ -401,7 +455,6 @@
         .subscribe();
     }
 
-    // Supabase에서 메뉴(Tabs) 불러오기
     async function fetchTabs() {
       const { data, error } = await _supabase
         .from('tabs')
@@ -428,7 +481,6 @@
       checkTabOverflow();
     }
 
-    // Supabase에서 Todo 목록 불러오기
     async function fetchTodos() {
       const { data, error } = await _supabase
         .from('todos')
@@ -467,13 +519,19 @@
         }`;
         tabEl.draggable = true;
 
+        // Desktop Drag Handlers
         tabEl.addEventListener("dragstart", (e) => {
           draggedTabIdx = index;
           e.dataTransfer.effectAllowed = "move";
         });
 
+        tabEl.addEventListener("drag", (e) => {
+          if (e.clientY || e.clientX) handleAutoScroll(e.clientY, e.clientX);
+        });
+
         tabEl.addEventListener("dragover", (e) => {
           e.preventDefault();
+          handleAutoScroll(e.clientY, e.clientX);
           const rect = tabEl.getBoundingClientRect();
           const midPoint = rect.left + rect.width / 2;
           
@@ -489,8 +547,13 @@
           tabEl.classList.remove("drag-line-left", "drag-line-right");
         });
 
+        tabEl.addEventListener("dragend", () => {
+          stopAutoScroll();
+        });
+
         tabEl.addEventListener("drop", async (e) => {
           e.preventDefault();
+          stopAutoScroll();
           const isLeft = tabEl.classList.contains("drag-line-left");
           tabEl.classList.remove("drag-line-left", "drag-line-right");
 
@@ -536,7 +599,6 @@
       checkTabOverflow();
     }
 
-    // Modal 내 메뉴 목록 및 삭제 버튼 렌더링
     function renderModalTabList() {
       if (!modalTabList) return;
       modalTabList.innerHTML = "";
@@ -564,7 +626,6 @@
       });
     }
 
-    // Tab Management Modal Handlers
     function openAddModal() {
       tabNameInput.value = "";
       addModal.classList.remove("hidden");
@@ -612,7 +673,6 @@
       if (e.key === "Escape") closeAddModal();
     });
 
-    // Delete Tab Modal Handlers
     function openDeleteModal(tabId, tabName) {
       tabToDeleteId = tabId;
       document.getElementById("delete-modal-text").textContent = `'${tabName}' 메뉴와 포함된 모든 할 일을 삭제하시겠습니까?`;
@@ -641,7 +701,6 @@
       }
     });
 
-    // Check Tab Overflow for Scroll Buttons
     function checkTabOverflow() {
       const hasOverflow = tabsContainer.scrollWidth > tabsContainer.clientWidth;
       if (hasOverflow) {
@@ -661,31 +720,31 @@
     });
     window.addEventListener("resize", checkTabOverflow);
 
-    // Create Todo / Divider Function
-    async function createTodo(text, isDivider = false) {
-      if (!activeTabId) return;
-      
-      const currentTabTodos = todos.filter(t => t.tabId === activeTabId);
-      const newOrder = currentTabTodos.length > 0 
-        ? Math.max(...currentTabTodos.map(t => t.order || 0)) + 1 
-        : 1;
+// [수정 후]
+async function createTodo(text, isDivider = false) {
+  if (!activeTabId) return;
+  
+  const currentTabTodos = todos.filter(t => t.tabId === activeTabId);
+  // 가장 작은 order 값보다 1 작은 값을 지정하여 맨 위에 추가
+  const newOrder = currentTabTodos.length > 0 
+    ? Math.min(...currentTabTodos.map(t => t.order || 0)) - 1 
+    : 1;
 
-      const { error } = await _supabase
-        .from('todos')
-        .insert({
-          tab_id: activeTabId,
-          text: text,
-          completed: false,
-          is_divider: isDivider,
-          order: newOrder
-        });
+  const { error } = await _supabase
+    .from('todos')
+    .insert({
+      tab_id: activeTabId,
+      text: text,
+      completed: false,
+      is_divider: isDivider,
+      order: newOrder
+    });
 
-      if (!error) {
-        await fetchTodos();
-      }
-    }
+  if (!error) {
+    await fetchTodos();
+  }
+}
 
-    // Add Todo Button Click
     btnAddTodo.addEventListener("click", async () => {
       const val = todoInput.value.trim();
       if (val) {
@@ -696,12 +755,11 @@
       }
     });
 
-    // Add Divider Button Click
     btnAddDivider.addEventListener("click", async () => {
       await createTodo("", true);
     });
 
-    // Render Todos UI
+    // Render Todos UI & Mobile/Desktop Drag-Drop Support
     function renderTodos() {
       todoListContainer.innerHTML = "";
       const currentTodos = todos.filter(t => t.tabId === activeTabId);
@@ -720,21 +778,28 @@
 
       currentTodos.forEach((item) => {
         const itemEl = document.createElement("div");
+        itemEl.dataset.id = item.id;
         
         if (item.isDivider) {
-          itemEl.className = "group flex items-center gap-1.5 pl-0 pr-1 py-0 rounded-lg hover:bg-gray-100/70 transition relative h-5";
+          itemEl.className = "group flex items-center gap-1.5 pl-0 pr-1 py-0 rounded-lg hover:bg-gray-100/70 transition relative h-5 todo-item";
         } else {
-          itemEl.className = "group flex items-start gap-1.5 pl-0 pr-1 py-0.5 rounded-lg hover:bg-gray-100/70 transition relative";
+          itemEl.className = "group flex items-start gap-1.5 pl-0 pr-1 py-0.5 rounded-lg hover:bg-gray-100/70 transition relative todo-item";
         }
         itemEl.draggable = true;
 
+        // 🖥️ Desktop Drag Events
         itemEl.addEventListener("dragstart", (e) => {
           draggedTodoId = item.id;
           e.dataTransfer.effectAllowed = "move";
         });
 
+        itemEl.addEventListener("drag", (e) => {
+          if (e.clientY || e.clientX) handleAutoScroll(e.clientY, e.clientX);
+        });
+
         itemEl.addEventListener("dragover", (e) => {
           e.preventDefault();
+          handleAutoScroll(e.clientY, e.clientX);
           const rect = itemEl.getBoundingClientRect();
           const midPoint = rect.top + rect.height / 2;
           
@@ -750,43 +815,98 @@
           itemEl.classList.remove("drag-line-top", "drag-line-bottom");
         });
 
+        itemEl.addEventListener("dragend", () => {
+          stopAutoScroll();
+        });
+
         itemEl.addEventListener("drop", async (e) => {
           e.preventDefault();
+          stopAutoScroll();
           const isTop = itemEl.classList.contains("drag-line-top");
           itemEl.classList.remove("drag-line-top", "drag-line-bottom");
 
           if (!draggedTodoId || draggedTodoId === item.id) return;
 
-          const activeTodos = [...todos.filter(t => t.tabId === activeTabId)];
-          const draggedIdx = activeTodos.findIndex(t => t.id === draggedTodoId);
-          const targetIdx = activeTodos.findIndex(t => t.id === item.id);
+          await applyReorder(draggedTodoId, item.id, isTop);
+          draggedTodoId = null;
+        });
 
-          if (draggedIdx === -1 || targetIdx === -1) return;
+        // 📱 Mobile Touch Drag Events Engine
+        let touchStartTimer = null;
+        let isTouchDragging = false;
+        let lastTargetEl = null;
 
-          const [draggedItem] = activeTodos.splice(draggedIdx, 1);
-          let insertIdx = activeTodos.findIndex(t => t.id === item.id);
-          if (!isTop) insertIdx += 1;
+        itemEl.addEventListener("touchstart", (e) => {
+          // 입력창이나 삭제 버튼 터치 시 드래그 방지
+          if (e.target.closest("button") || e.target.closest("textarea") || e.target.closest("input")) return;
 
-          activeTodos.splice(insertIdx, 0, draggedItem);
+          const touch = e.touches[0];
+          draggedTodoId = item.id;
 
-          for (let i = 0; i < activeTodos.length; i++) {
-            await _supabase
-              .from('todos')
-              .update({ order: i + 1 })
-              .eq('id', activeTodos[i].id);
+          touchStartTimer = setTimeout(() => {
+            isTouchDragging = true;
+            itemEl.classList.add("touch-dragging");
+          }, 150); // 150ms 길게 누르면 드래그 시작
+        }, { passive: true });
+
+        itemEl.addEventListener("touchmove", (e) => {
+          if (!isTouchDragging) {
+            clearTimeout(touchStartTimer);
+            return;
           }
 
-          draggedTodoId = null;
-          await fetchTodos();
+          const touch = e.touches[0];
+          handleAutoScroll(touch.clientY, touch.clientX);
+
+          // 현재 터치 위치에 있는 todo 항목 찾기
+          const elementUnderTouch = document.elementFromPoint(touch.clientX, touch.clientY);
+          const targetTodoEl = elementUnderTouch?.closest(".todo-item");
+
+          // 기존 표시선 초기화
+          document.querySelectorAll(".todo-item").forEach(el => {
+            el.classList.remove("drag-line-top", "drag-line-bottom");
+          });
+
+          if (targetTodoEl && targetTodoEl !== itemEl) {
+            lastTargetEl = targetTodoEl;
+            const rect = targetTodoEl.getBoundingClientRect();
+            const midPoint = rect.top + rect.height / 2;
+
+            if (touch.clientY < midPoint) {
+              targetTodoEl.classList.add("drag-line-top");
+            } else {
+              targetTodoEl.classList.add("drag-line-bottom");
+            }
+          }
+        }, { passive: true });
+
+        itemEl.addEventListener("touchend", async (e) => {
+          clearTimeout(touchStartTimer);
+          stopAutoScroll();
+
+          if (isTouchDragging) {
+            isTouchDragging = false;
+            itemEl.classList.remove("touch-dragging");
+
+            if (lastTargetEl) {
+              const isTop = lastTargetEl.classList.contains("drag-line-top");
+              const targetId = lastTargetEl.dataset.id;
+              
+              lastTargetEl.classList.remove("drag-line-top", "drag-line-bottom");
+              if (targetId && draggedTodoId !== targetId) {
+                await applyReorder(draggedTodoId, targetId, isTop);
+              }
+            }
+            draggedTodoId = null;
+            lastTargetEl = null;
+          }
         });
 
         if (item.isDivider) {
-          // Divider
           const dividerContent = document.createElement("div");
           dividerContent.className = "flex-1 border-b-2 border-gray-200/90";
           itemEl.appendChild(dividerContent);
         } else {
-          // Checkbox
           const checkboxBtn = document.createElement("button");
           checkboxBtn.className = "pt-0.5 text-gray-400 hover:text-blue-600 transition shrink-0";
           checkboxBtn.innerHTML = item.completed
@@ -802,18 +922,15 @@
           });
           itemEl.appendChild(checkboxBtn);
 
-          // Todo Content Container
           const textContainer = document.createElement("div");
           textContainer.className = "flex-1 min-w-0";
 
-          // 글자 영역 스팬
           const textEl = document.createElement("span");
           textEl.className = `inline-block text-sm sm:text-sm whitespace-pre-wrap break-words cursor-pointer py-0 leading-snug ${
             item.completed ? "line-through text-gray-400" : "text-gray-800"
           }`;
           textEl.textContent = item.text;
 
-          // 삭제 모드 편집창 전환
           textEl.addEventListener("click", (e) => {
             e.stopPropagation();
 
@@ -824,7 +941,6 @@
             editTextarea.className = "flex-1 p-1.5 text-sm sm:text-sm border border-blue-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 whitespace-pre-wrap resize-none overflow-hidden leading-snug";
             editTextarea.value = item.text;
 
-            // 수정 창 전용 되돌리기 버튼
             const editUndoBtn = document.createElement("button");
             editUndoBtn.className = "px-2 py-1.5 bg-gray-100 text-gray-600 rounded-lg border border-gray-300 hover:bg-gray-200 transition shrink-0 select-none";
             editUndoBtn.innerHTML = `<i class="ph ph-arrow-u-up-left text-base"></i>`;
@@ -834,8 +950,6 @@
             editWrapper.appendChild(editUndoBtn);
 
             const editUndoManager = new TextUndoManager(editTextarea);
-
-            // 수정창 전용 되돌리기에도 길게 누르기 바인딩
             bindPressAndHoldUndo(editUndoBtn, editUndoManager);
 
             const adjustHeight = () => {
@@ -848,7 +962,6 @@
             editTextarea.focus();
             
             editTextarea.setSelectionRange(editTextarea.value.length, editTextarea.value.length);
-
             editTextarea.addEventListener("input", adjustHeight);
 
             let isSaved = false;
@@ -888,7 +1001,6 @@
           itemEl.appendChild(textContainer);
         }
 
-        // Delete Todo Item Button
         const deleteBtn = document.createElement("button");
         deleteBtn.className = "text-gray-300 hover:text-red-500 transition shrink-0 opacity-0 group-hover:opacity-100 px-0.5";
         deleteBtn.innerHTML = `<i class="ph ph-trash text-base"></i>`;
@@ -904,6 +1016,30 @@
         itemEl.appendChild(deleteBtn);
         todoListContainer.appendChild(itemEl);
       });
+    }
+
+    // 순서 재정렬 DB 업데이트 함수
+    async function applyReorder(sourceId, targetId, isTop) {
+      const activeTodos = [...todos.filter(t => t.tabId === activeTabId)];
+      const draggedIdx = activeTodos.findIndex(t => t.id === sourceId);
+      const targetIdx = activeTodos.findIndex(t => t.id === targetId);
+
+      if (draggedIdx === -1 || targetIdx === -1) return;
+
+      const [draggedItem] = activeTodos.splice(draggedIdx, 1);
+      let insertIdx = activeTodos.findIndex(t => t.id === targetId);
+      if (!isTop) insertIdx += 1;
+
+      activeTodos.splice(insertIdx, 0, draggedItem);
+
+      for (let i = 0; i < activeTodos.length; i++) {
+        await _supabase
+          .from('todos')
+          .update({ order: i + 1 })
+          .eq('id', activeTodos[i].id);
+      }
+
+      await fetchTodos();
     }
 
     // Run auth check on load
