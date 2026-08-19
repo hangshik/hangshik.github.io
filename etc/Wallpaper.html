@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      background: url('Wallpaper.png') no-repeat center center fixed;
+      background-size: cover;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      user-select: none;
+    }
+
+    /* 레이아웃 구조 */
+    .main-container {
+      display: flex;
+      width: 100%;
+      height: 100%;
+    }
+
+    .left-container {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+    }
+
+    .top-left-container {
+      display: flex;
+      width: 100%;
+    }
+
+    .card {
+      display: flex;
+      flex-direction: column;
+      background: rgba(255, 255, 255, 0.88);
+      backdrop-filter: blur(10px);
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* 1번 영역: 바로가기 링크 공간 */
+    .shortcut-card {
+      padding: 16px;
+      overflow-y: auto;
+      background: rgba(255, 255, 255, 0.85);
+    }
+
+    .shortcut-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .settings-btn {
+      padding: 6px 10px;
+      background: #007aff;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .settings-btn:hover {
+      background: #0056b3;
+    }
+
+    /* 링크 버튼을 가로로 길지 않게 자연스러운 너비로 배치 */
+    .shortcut-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-content: flex-start;
+    }
+
+    .shortcut-item-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 8px 14px;
+      background: rgba(255, 255, 255, 0.9);
+      border: 1px solid rgba(0, 0, 0, 0.08);
+      border-radius: 8px;
+      color: #333;
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 500;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.03);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .shortcut-item-btn:hover {
+      background: #ffffff;
+      border-color: #007aff;
+      color: #007aff;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 8px rgba(0,0,0,0.08);
+    }
+
+    /* 3번 영역: 파스텔 색상 선택 */
+    .pastel-card {
+      background-color: #e2eafc; /* 기본 파스텔 블루 */
+      transition: background-color 0.4s ease;
+      position: relative;
+    }
+
+    .palette-container {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      display: flex;
+      gap: 6px;
+      background: rgba(255, 255, 255, 0.6);
+      padding: 6px 10px;
+      border-radius: 20px;
+      backdrop-filter: blur(4px);
+      z-index: 2;
+    }
+
+    .color-dot {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      cursor: pointer;
+      border: 2px solid white;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+      transition: transform 0.2s;
+    }
+
+    .color-dot:hover {
+      transform: scale(1.2);
+    }
+
+    .iframe-container {
+      width: 100%;
+      height: 100%;
+      position: relative;
+    }
+
+    iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+      background: transparent;
+    }
+
+    /* 경계선 (Resizer) */
+    .resizer-h {
+      width: 6px;
+      cursor: col-resize;
+      background: rgba(0, 0, 0, 0.12);
+      z-index: 10;
+      transition: background 0.2s;
+    }
+
+    .resizer-v {
+      height: 6px;
+      cursor: row-resize;
+      background: rgba(0, 0, 0, 0.12);
+      z-index: 10;
+      transition: background 0.2s;
+    }
+
+    .resizer-h:hover, .resizer-v:hover, .is-resizing {
+      background: #007aff !important;
+    }
+
+    .drag-overlay {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      z-index: 5;
+      display: none;
+    }
+    .is-resizing-active .drag-overlay {
+      display: block;
+    }
+
+    /* 모달 팝업 스타일 */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; width: 100vw; height: 100vh;
+      background: rgba(0, 0, 0, 0.4);
+      z-index: 1000;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .modal-overlay.active {
+      display: flex;
+    }
+
+    .modal {
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      width: 420px;
+      max-width: 90%;
+      max-height: 85vh;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+    }
+
+    .modal-title {
+      font-size: 16px;
+      font-weight: 700;
+      margin-bottom: 12px;
+      color: #222;
+    }
+
+    .settings-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      overflow-y: auto;
+      max-height: 320px;
+      padding-right: 4px;
+      margin-bottom: 12px;
+    }
+
+    /* 모달 내 드래그 항목 */
+    .setting-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: #f8f9fa;
+      padding: 8px;
+      border-radius: 6px;
+      border: 1px solid #e9ecef;
+      cursor: grab;
+      transition: background 0.2s;
+    }
+
+    .setting-item.dragging {
+      opacity: 0.4;
+      background: #e7f1ff;
+      border: 1px dashed #007aff;
+    }
+
+    .drag-handle {
+      cursor: grab;
+      color: #aaa;
+      font-size: 14px;
+      padding: 0 4px;
+    }
+
+    .setting-item input[type="text"] {
+      padding: 6px 8px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 12px;
+      outline: none;
+    }
+
+    .setting-item input.title-input { width: 90px; }
+    .setting-item input.url-input { flex: 1; }
+
+    .btn-delete {
+      background: #ff3b30;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      padding: 6px 8px;
+      cursor: pointer;
+      font-size: 11px;
+    }
+
+    .modal-actions {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .modal-actions-right {
+      display: flex;
+      gap: 8px;
+    }
+
+    .btn-modal {
+      padding: 7px 14px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      border: none;
+      cursor: pointer;
+    }
+
+    .btn-secondary { background: #e5e5ea; color: #333; }
+    .btn-primary { background: #007aff; color: white; }
+    .btn-add { background: #34c759; color: white; }
+  </style>
+</head>
+<body>
+
+  <div class="main-container" id="mainContainer">
+    <!-- 좌측 영역 -->
+    <div class="left-container" id="leftContainer" style="width: 66.66%;">
+      
+      <!-- 상단 영역 -->
+      <div class="top-left-container" id="topLeftContainer" style="height: 50%;">
+        
+        <!-- 1. 상단 왼쪽: 바로가기 목록 -->
+        <div class="card shortcut-card" id="card-1" style="width: 50%;">
+          <div class="shortcut-header">
+            <button class="settings-btn" onclick="openSettings()">⚙️ 바로가기 설정</button>
+          </div>
+          <div class="shortcut-list" id="shortcutList"></div>
+          <div class="drag-overlay"></div>
+        </div>
+
+        <!-- 세로 구분선 1 -->
+        <div class="resizer-h" id="resizer-h1"></div>
+
+        <!-- 2. 상단 가운데: 시간표 -->
+        <div class="card" id="card-2" style="flex: 1;">
+          <div class="iframe-container">
+            <iframe src="https://hangshik.github.io/etc/timetable_namyang.html"></iframe>
+          </div>
+          <div class="drag-overlay"></div>
+        </div>
+      </div>
+
+      <!-- 가로 구분선 -->
+      <div class="resizer-v" id="resizer-v"></div>
+
+      <!-- 3. 아래줄: 파스텔 영역 및 색상 선택 팔레트 -->
+      <div class="card pastel-card" id="card-3" style="flex: 1;">
+        <div class="palette-container">
+          <div class="color-dot" style="background: #e2eafc;" onclick="changePastelColor('#e2eafc')" title="블루"></div>
+          <div class="color-dot" style="background: #fec8d8;" onclick="changePastelColor('#fec8d8')" title="핑크"></div>
+          <div class="color-dot" style="background: #d8b4e2;" onclick="changePastelColor('#d8b4e2')" title="퍼플"></div>
+          <div class="color-dot" style="background: #e8f5e9;" onclick="changePastelColor('#e8f5e9')" title="민트"></div>
+          <div class="color-dot" style="background: #fff9c4;" onclick="changePastelColor('#fff9c4')" title="옐로우"></div>
+          <div class="color-dot" style="background: #ffe0b2;" onclick="changePastelColor('#ffe0b2')" title="피치"></div>
+        </div>
+        <div class="drag-overlay"></div>
+      </div>
+
+    </div>
+
+    <!-- 세로 구분선 2 -->
+    <div class="resizer-h" id="resizer-h2"></div>
+
+    <!-- 4. 오른쪽: To-Do List -->
+    <div class="card" id="card-4" style="flex: 1;">
+      <div class="iframe-container">
+        <iframe src="https://hangshik.github.io/etc/todolist.html"></iframe>
+      </div>
+      <div class="drag-overlay"></div>
+    </div>
+  </div>
+
+  <!-- 바로가기 설정 모달 -->
+  <div class="modal-overlay" id="modalOverlay">
+    <div class="modal">
+      <div class="modal-title">바로가기 설정 (드래그하여 순서 변경)</div>
+      <div class="settings-list" id="settingsList"></div>
+      
+      <div class="modal-actions">
+        <button class="btn-modal btn-add" onclick="addSettingRow()">+ 항목 추가</button>
+        <div class="modal-actions-right">
+          <button class="btn-modal btn-secondary" onclick="closeSettings()">취소</button>
+          <button class="btn-modal btn-primary" onclick="saveSettings()">설정 저장</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // 기본 바로가기 목록
+    const defaultShortcuts = [
+      { title: "네이버", url: "https://www.naver.com" },
+      { title: "구글", url: "https://www.google.com" },
+      { title: "유튜브", url: "https://www.youtube.com" }
+    ];
+
+    let shortcuts = [];
+
+    document.addEventListener("DOMContentLoaded", () => {
+      loadShortcuts();
+      loadLayout();
+      loadPastelColor();
+      initResizers();
+    });
+
+    /* --- 바로가기 관리 --- */
+    function loadShortcuts() {
+      const saved = localStorage.getItem('config_shortcuts');
+      shortcuts = saved ? JSON.parse(saved) : defaultShortcuts;
+      renderShortcuts();
+    }
+
+    function renderShortcuts() {
+      const listEl = document.getElementById('shortcutList');
+      listEl.innerHTML = '';
+
+      shortcuts.forEach(item => {
+        const a = document.createElement('a');
+        a.className = 'shortcut-item-btn';
+        a.textContent = item.title;
+        
+        let url = item.url;
+        if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
+        
+        a.href = url;
+        a.target = '_blank'; // 크롬/새 탭으로 열기
+        listEl.appendChild(a);
+      });
+    }
+
+    /* --- 모달 및 드래그 앤 드롭 설정 --- */
+    function openSettings() {
+      const listEl = document.getElementById('settingsList');
+      listEl.innerHTML = '';
+
+      shortcuts.forEach(item => {
+        createSettingRow(item.title, item.url);
+      });
+
+      // 설정 창을 열 때 기본적으로 새로운 입력 행(항목)을 하나 추가
+      createSettingRow();
+
+      initDragAndDrop();
+      document.getElementById('modalOverlay').classList.add('active');
+    }
+
+    function closeSettings() {
+      document.getElementById('modalOverlay').classList.remove('active');
+    }
+
+    function createSettingRow(title = '', url = '') {
+      const listEl = document.getElementById('settingsList');
+      const div = document.createElement('div');
+      div.className = 'setting-item';
+      div.draggable = true;
+
+      div.innerHTML = `
+        <span class="drag-handle">☰</span>
+        <input type="text" class="title-input" placeholder="제목" value="${title}">
+        <input type="text" class="url-input" placeholder="https://..." value="${url}">
+        <button class="btn-delete" onclick="this.parentElement.remove()">삭제</button>
+      `;
+
+      listEl.appendChild(div);
+      initDragAndDrop();
+    }
+
+    function addSettingRow() {
+      createSettingRow();
+      const listEl = document.getElementById('settingsList');
+      listEl.scrollTop = listEl.scrollHeight;
+    }
+
+    function saveSettings() {
+      const rows = document.querySelectorAll('.setting-item');
+      const newShortcuts = [];
+
+      rows.forEach(row => {
+        const title = row.querySelector('.title-input').value.trim();
+        const url = row.querySelector('.url-input').value.trim();
+
+        if (title && url) {
+          newShortcuts.push({ title, url });
+        }
+      });
+
+      shortcuts = newShortcuts;
+      localStorage.setItem('config_shortcuts', JSON.stringify(shortcuts));
+      renderShortcuts();
+      closeSettings();
+    }
+
+    /* --- 드래그 앤 드롭 로직 --- */
+    function initDragAndDrop() {
+      const listEl = document.getElementById('settingsList');
+      const items = listEl.querySelectorAll('.setting-item');
+
+      items.forEach(item => {
+        item.addEventListener('dragstart', () => {
+          setTimeout(() => item.classList.add('dragging'), 0);
+        });
+
+        item.addEventListener('dragend', () => {
+          item.classList.remove('dragging');
+        });
+      });
+
+      listEl.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        const draggingItem = document.querySelector('.dragging');
+        if (!draggingItem) return;
+
+        const siblings = [...listEl.querySelectorAll('.setting-item:not(.dragging)')];
+        const nextSibling = siblings.find(sibling => {
+          return e.clientY <= sibling.getBoundingClientRect().top + sibling.offsetHeight / 2;
+        });
+
+        listEl.insertBefore(draggingItem, nextSibling);
+      });
+    }
+
+    /* --- 파스텔 색상 기능 --- */
+    function changePastelColor(color) {
+      const pastelCard = document.getElementById('card-3');
+      pastelCard.style.backgroundColor = color;
+      localStorage.setItem('config_pastel_color', color);
+    }
+
+    function loadPastelColor() {
+      const savedColor = localStorage.getItem('config_pastel_color');
+      if (savedColor) {
+        document.getElementById('card-3').style.backgroundColor = savedColor;
+      }
+    }
+
+    /* --- 레이아웃 크기 저장/불러오기 --- */
+    function saveLayout() {
+      const layout = {
+        leftWidth: document.getElementById('leftContainer').style.width,
+        topHeight: document.getElementById('topLeftContainer').style.height,
+        card1Width: document.getElementById('card-1').style.width
+      };
+      localStorage.setItem('config_layout', JSON.stringify(layout));
+    }
+
+    function loadLayout() {
+      const savedLayout = localStorage.getItem('config_layout');
+      if (savedLayout) {
+        const layout = JSON.parse(savedLayout);
+        if (layout.leftWidth) document.getElementById('leftContainer').style.width = layout.leftWidth;
+        if (layout.topHeight) document.getElementById('topLeftContainer').style.height = layout.topHeight;
+        if (layout.card1Width) document.getElementById('card-1').style.width = layout.card1Width;
+      }
+    }
+
+    /* --- 경계선 드래그 조절 --- */
+    function initResizers() {
+      makeResizableH(document.getElementById('resizer-h1'), document.getElementById('card-1'), document.getElementById('topLeftContainer'));
+      makeResizableH(document.getElementById('resizer-h2'), document.getElementById('leftContainer'), document.getElementById('mainContainer'));
+      makeResizableV(document.getElementById('resizer-v'), document.getElementById('topLeftContainer'), document.getElementById('leftContainer'));
+    }
+
+    function makeResizableH(resizer, leftEl, parentEl) {
+      let x = 0, leftWidth = 0;
+
+      resizer.addEventListener('mousedown', (e) => {
+        x = e.clientX;
+        leftWidth = leftEl.getBoundingClientRect().width;
+        document.body.classList.add('is-resizing-active');
+        resizer.classList.add('is-resizing');
+
+        const onMouseMove = (e) => {
+          const dx = e.clientX - x;
+          const parentWidth = parentEl.getBoundingClientRect().width;
+          const newWidthPercent = ((leftWidth + dx) / parentWidth) * 100;
+          if (newWidthPercent > 10 && newWidthPercent < 90) {
+            leftEl.style.width = `${newWidthPercent}%`;
+          }
+        };
+
+        const onMouseUp = () => {
+          document.body.classList.remove('is-resizing-active');
+          resizer.classList.remove('is-resizing');
+          document.removeEventListener('mousemove', onMouseMove);
+          document.removeEventListener('mouseup', onMouseUp);
+          saveLayout();
+        };
+
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mouseup', onMouseUp);
+      });
+    }
+
+    function makeResizableV(resizer, topEl, parentEl) {
+      let y = 0, topHeight = 0;
+
+      resizer.addEventListener('mousedown', (e) => {
+        y = e.clientY;
+        topHeight = topEl.getBoundingClientRect().height;
+        document.body.classList.add('is-resizing-active');
+        resizer.classList.add('is-resizing');
+
+        const onMouseMove = (e) => {
+          const dy = e.clientY - y;
+          const parentHeight = parentEl.getBoundingClientRect().height;
+          const newHeightPercent = ((topHeight + dy) / parentHeight) * 100;
+          if (newHeightPercent > 10 && newHeightPercent < 90) {
+            topEl.style.height = `${newHeightPercent}%`;
+          }
+        };
+
+        const onMouseUp = () => {
+          document.body.classList.remove('is-resizing-active');
+          resizer.classList.remove('is-resizing');
+          document.removeEventListener('mousemove', onMouseMove);
+          document.removeEventListener('mouseup', onMouseUp);
+          saveLayout();
+        };
+
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mouseup', onMouseUp);
+      });
+    }
+  </script>
+</body>
+</html>
