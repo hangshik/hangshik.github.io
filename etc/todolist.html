@@ -5,15 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="robots" content="noindex, nofollow">
   <title>To Do List</title>
-  <!-- Google tag (gtag.js) -->
-  <script async src="https://www.googletagmanager.com/gtag/js?id=G-VHD0QPH39L"></script>
-  <script>
-    window.dataLayer = window.dataLayer || [];
-    function gtag(){dataLayer.push(arguments);}
-    gtag('js', new Date());
-    gtag('config', 'G-VHD0QPH39L');
-  </script>
-
   <!-- 📱 모바일 앱 전체 화면(Stand-alone) 관련 설정 -->
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -22,7 +13,7 @@
   <!-- 웹 앱 매니페스트 -->
   <link rel="manifest" href="data:application/json;charset=utf-8,%7B%22name%22%3A%22To%20Do%20List%22%2C%22short_name%22%3A%22ToDo%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%23f3f4f6%22%2C%22theme_color%22%3A%22%233b82f6%22%7D">
   
-  <!-- Icons & Supabase (Tailwind CSS 제거 및 pure CSS 전환) -->
+  <!-- Icons & Supabase -->
   <script src="https://unpkg.com/@phosphor-icons/web"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
@@ -119,9 +110,7 @@
       box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
     }
 
-    .auth-box {
-      text-align: center;
-    }
+    .auth-box { text-align: center; }
 
     .auth-icon-wrapper {
       width: 48px;
@@ -291,29 +280,44 @@
     }
 
     @media (min-width: 640px) {
-      .content-area {
-        padding: 16px 12px;
-      }
+      .content-area { padding: 16px 12px; }
     }
 
     .input-section {
-      margin-bottom: 10px;
+      margin-bottom: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
     }
 
     .input-group {
       display: flex;
-      align-items: center;
+      align-items: flex-start;
       gap: 6px;
     }
 
-    .todo-textarea {
+    /* Editable 등록 입력창 */
+    .todo-editable-input {
       flex: 1;
-      resize: none;
-      overflow: hidden;
       min-height: 38px;
+      max-height: 120px;
+      overflow-y: auto;
       font-size: 14px;
       padding: 8px 12px;
       line-height: 1.4;
+      border: 1px solid #d1d5db;
+      border-radius: 12px;
+      outline: none;
+      background-color: #ffffff;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .todo-editable-input:focus {
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3);
+    }
+    .todo-editable-input[placeholder]:empty:before {
+      content: attr(placeholder);
+      color: #9ca3af;
     }
 
     .todo-list-container {
@@ -359,12 +363,8 @@
       position: relative;
       transition: background-color 0.15s;
     }
-    .todo-item:hover {
-      background-color: rgba(243, 244, 246, 0.7);
-    }
-    .todo-item-divider {
-      height: 20px;
-    }
+    .todo-item:hover { background-color: rgba(243, 244, 246, 0.7); }
+    .todo-item-divider { height: 20px; }
 
     .todo-checkbox-btn {
       padding-top: 2px;
@@ -388,11 +388,13 @@
       cursor: pointer;
       line-height: 1.375;
       color: #1f2937;
+      width: 100%;
     }
     .todo-text-completed {
       text-decoration: line-through;
-      color: #9ca3af;
+      color: #9ca3af !important;
     }
+    .todo-text-completed * { color: #9ca3af !important; }
 
     .todo-divider-line {
       flex: 1;
@@ -409,9 +411,83 @@
     }
     .todo-item:hover .todo-delete-btn { opacity: 1; }
     .todo-delete-btn:hover { color: #ef4444; }
-    .todo-delete-btn-mobile {
-      opacity: 1;
+
+    /* WYSIWYG Editable & Toolbar */
+    .edit-container {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      width: 100%;
+    }
+
+    .editable-input {
+      width: 100%;
+      min-height: 38px;
+      padding: 8px 12px;
+      border: 1px solid #3b82f6;
+      border-radius: 8px;
+      font-size: 14px;
+      outline: none;
+      background-color: #ffffff;
+      box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+    }
+
+    .style-toolbar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 4px 8px;
+      background-color: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+    }
+
+    /* 등록 입력창의 툴바는 처음에는 숨기고 입력창에 포커스가 들어오면 표시 */
+    #input-style-toolbar {
+      display: none;
+    }
+
+    #input-style-toolbar.is-visible {
+      display: flex;
+    }
+
+    .btn-style {
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 700;
+      border: 1px solid #cbd5e1;
+      background-color: #ffffff;
+      color: #1e293b;
+      cursor: pointer;
+    }
+    .btn-style:hover { background-color: #f1f5f9; }
+
+    .color-dot {
+      width: 18px;
+      height: 18px;
+      border-radius: 9999px;
+      border: 1px solid rgba(0,0,0,0.15);
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: transform 0.1s;
+    }
+    .color-dot:hover { transform: scale(1.2); }
+
+    /* 툴바 우측 삭제 버튼 */
+    .btn-toolbar-delete {
+      margin-left: auto;
       color: #9ca3af;
+      font-size: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2px;
+      border-radius: 4px;
+      transition: color 0.15s;
+    }
+    .btn-toolbar-delete:hover {
+      color: #ef4444;
     }
 
     /* Modal Layout Inner Elements */
@@ -497,13 +573,6 @@
       box-shadow: 0 1px 3px rgba(0,0,0,0.1);
     }
     .btn-modal-danger:hover { background-color: #b91c1c; }
-
-    .edit-input-wrapper {
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      width: 100%;
-    }
   </style>
 </head>
 <body>
@@ -537,12 +606,7 @@
     <!-- Tab Navigation Area -->
     <div class="tabs-header">
       <div class="tabs-wrapper">
-        <!-- Tabs Container -->
-        <div id="tabs-container" class="tabs-container no-scrollbar">
-          <!-- Dynamic Tabs render here -->
-        </div>
-
-        <!-- Right Action Button -->
+        <div id="tabs-container" class="tabs-container no-scrollbar"></div>
         <button id="btn-add-tab" class="btn-tab-add" title="메뉴 관리">
           <i class="ph ph-plus"></i>
         </button>
@@ -552,15 +616,15 @@
     <!-- Main Todo Content Area -->
     <div class="content-area">
       
-      <!-- Input Section -->
+      <!-- Input Section (WYSIWYG Editable Input) -->
       <div class="input-section">
         <div class="input-group">
-          <textarea 
+          <div 
             id="todo-input" 
-            rows="1" 
+            contenteditable="true" 
             placeholder="할 일을 입력하세요" 
-            class="input-field todo-textarea"
-          ></textarea>
+            class="todo-editable-input"
+          ></div>
           
           <button 
             id="btn-undo-input" 
@@ -574,12 +638,13 @@
             등록
           </button>
         </div>
+
+        <!-- 등록용 툴바: 입력창 아래에 표시 -->
+        <div id="input-style-toolbar" class="style-toolbar"></div>
       </div>
 
       <!-- Todo List Container -->
-      <div id="todo-list" class="todo-list-container">
-        <!-- Dynamic Todo items render here -->
-      </div>
+      <div id="todo-list" class="todo-list-container"></div>
       
       <!-- 구분선 추가 버튼 -->
       <div id="divider-btn-container" class="divider-container is-hidden">
@@ -601,7 +666,6 @@
         </button>
       </div>
 
-      <!-- 새 메뉴 입력 -->
       <div class="modal-tab-form">
         <input 
           type="text" 
@@ -614,12 +678,9 @@
         </button>
       </div>
 
-      <!-- 기존 메뉴 삭제 리스트 -->
       <div class="modal-tab-list-area">
         <div class="modal-sub-title">기존 메뉴 삭제</div>
-        <div id="modal-tab-list" class="modal-tab-list">
-          <!-- dynamic tab items in modal -->
-        </div>
+        <div id="modal-tab-list" class="modal-tab-list"></div>
       </div>
     </div>
   </div>
@@ -637,21 +698,19 @@
   </div>
 
   <script>
-    // 비밀번호 설정
     const CORRECT_PASSWORD = "9859"; 
 
-    // Supabase 설정
     const SUPABASE_URL = 'https://whhmnutvzyqsnbffohqj.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndoaG1udXR2enlxc25iZmZvaHFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY4NTQ2OTYsImV4cCI6MjEwMjQzMDY5Nn0.yMVCwhuiJs_rtuf51zQty3yJfNXMHF2Oauy8y08_2Gc';
     const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    // DOM Element 참조 바인딩
     const authOverlay = document.getElementById("auth-overlay");
     const mainApp = document.getElementById("main-app");
     const authPasswordInput = document.getElementById("auth-password-input");
     const authSubmitBtn = document.getElementById("auth-submit-btn");
     const authErrorMsg = document.getElementById("auth-error-msg");
     const todoInput = document.getElementById("todo-input");
+    const inputStyleToolbar = document.getElementById("input-style-toolbar");
     const btnUndoInput = document.getElementById("btn-undo-input");
     const btnAddTodo = document.getElementById("btn-add-todo");
     const todoListContainer = document.getElementById("todo-list");
@@ -701,7 +760,6 @@
       if (e.key === "Enter") handleAuthSubmit();
     });
 
-    // App State
     let tabs = [];
     let activeTabId = "";
     let todos = [];
@@ -709,16 +767,12 @@
     let draggedTodoId = null;
     let tabToDeleteId = null;
 
-    // 터치 디바이스 여부 판별
     const isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
-
-    // 자동 스크롤 매니저
     let autoScrollInterval = null;
 
     function handleAutoScroll(clientY, clientX) {
       const scrollThreshold = 70;
       const maxScrollSpeed = 15;
-
       let scrollYDelta = 0;
       let scrollXDelta = 0;
 
@@ -758,19 +812,98 @@
       }
     }
 
-    // 히스토리 관리 클래스
+    // 공통 WYSIWYG 서식 툴바 생성 함수 (선택 영역 유지 및 즉시 실행 + 우측 삭제 버튼)
+    function createStyleToolbar(container, editableTarget, onDeleteCallback) {
+      container.innerHTML = "";
+
+      const boldBtn = document.createElement("button");
+      boldBtn.className = "btn-style";
+      boldBtn.textContent = "B";
+      boldBtn.title = "선택한 글자 굵게";
+      
+      const applyBold = (evt) => {
+        evt.preventDefault();
+        document.execCommand('bold', false, null);
+      };
+      
+      boldBtn.addEventListener("mousedown", applyBold);
+      boldBtn.addEventListener("touchstart", applyBold);
+
+      container.appendChild(boldBtn);
+
+      const colors = ['#1f2937', '#ef4444', '#f97316', '#eab308', '#22c55e', '#3b82f6', '#a855f7'];
+      colors.forEach(col => {
+        const dot = document.createElement("div");
+        dot.className = "color-dot";
+        dot.style.backgroundColor = col;
+        dot.title = "글자 색상 변경";
+        
+        const applyColor = (evt) => {
+          evt.preventDefault();
+          document.execCommand('foreColor', false, col);
+        };
+
+        dot.addEventListener("mousedown", applyColor);
+        dot.addEventListener("touchstart", applyColor);
+
+        container.appendChild(dot);
+      });
+
+      // 툴바 우측 삭제 아이콘 생성
+      const deleteBtn = document.createElement("button");
+      deleteBtn.className = "btn-toolbar-delete";
+      deleteBtn.innerHTML = `<i class="ph ph-trash"></i>`;
+      deleteBtn.title = "삭제";
+
+      const handleDelete = (evt) => {
+        evt.preventDefault();
+        if (onDeleteCallback) {
+          onDeleteCallback();
+        } else {
+          editableTarget.innerHTML = "";
+          editableTarget.focus();
+        }
+      };
+
+      deleteBtn.addEventListener("mousedown", handleDelete);
+      deleteBtn.addEventListener("touchstart", handleDelete);
+
+      container.appendChild(deleteBtn);
+    }
+
+    // 등록란 전용 툴바 초기화 (삭제 버튼 클릭 시 입력 내용 초기화)
+    createStyleToolbar(inputStyleToolbar, todoInput, () => {
+      todoInput.innerHTML = "";
+      mainInputUndoManager.reset("");
+    });
+
+    // 등록 입력창에 포커스가 들어오면 툴바 표시
+    todoInput.addEventListener("focus", () => {
+      inputStyleToolbar.classList.add("is-visible");
+    });
+
+    // 등록 입력창에서 포커스가 완전히 해제되면 툴바 숨김
+    todoInput.addEventListener("blur", () => {
+      setTimeout(() => {
+        if (document.activeElement !== todoInput &&
+            !inputStyleToolbar.contains(document.activeElement)) {
+          inputStyleToolbar.classList.remove("is-visible");
+        }
+      }, 0);
+    });
+
     class TextUndoManager {
       constructor(element, maxHistory = 50) {
         this.element = element;
         this.maxHistory = maxHistory;
-        this.history = [element.value || ""];
+        this.history = [element.innerHTML || ""];
         this.step = 0;
         this.init();
       }
 
       init() {
         this.element.addEventListener("input", () => {
-          const val = this.element.value;
+          const val = this.element.innerHTML;
           if (val !== this.history[this.step]) {
             this.history = this.history.slice(0, this.step + 1);
             this.history.push(val);
@@ -786,9 +919,7 @@
       undo() {
         if (this.step > 0) {
           this.step--;
-          this.element.value = this.history[this.step];
-          this.element.style.height = "auto";
-          this.element.style.height = this.element.scrollHeight + "px";
+          this.element.innerHTML = this.history[this.step];
           this.element.focus();
           return true;
         }
@@ -843,25 +974,18 @@
 
     bindPressAndHoldUndo(btnUndoInput, mainInputUndoManager);
 
-    todoInput.addEventListener("input", () => {
-      todoInput.style.height = "auto";
-      todoInput.style.height = todoInput.scrollHeight + "px";
-    });
-
     todoInput.addEventListener("keydown", async (e) => {
       if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
         e.preventDefault();
-        const val = todoInput.value.trim();
+        const val = todoInput.innerHTML.trim();
         if (val) {
           await createTodo(val, false);
-          todoInput.value = "";
-          todoInput.style.height = "auto";
+          todoInput.innerHTML = "";
           mainInputUndoManager.reset("");
         }
       } else if (e.key === "Escape") {
         e.preventDefault();
-        todoInput.value = "";
-        todoInput.style.height = "auto";
+        todoInput.innerHTML = "";
         mainInputUndoManager.reset("");
       }
     });
@@ -930,7 +1054,6 @@
       renderTodos();
     }
 
-    // Render Tabs UI
     function renderTabs() {
       tabsContainer.innerHTML = "";
       
@@ -1137,11 +1260,10 @@
     }
 
     btnAddTodo.addEventListener("click", async () => {
-      const val = todoInput.value.trim();
+      const val = todoInput.innerHTML.trim();
       if (val) {
         await createTodo(val, false);
-        todoInput.value = "";
-        todoInput.style.height = "auto";
+        todoInput.innerHTML = "";
         mainInputUndoManager.reset("");
       }
     });
@@ -1150,7 +1272,6 @@
       await createTodo("", true);
     });
 
-    // Render Todos UI
     function renderTodos() {
       todoListContainer.innerHTML = "";
       const currentTodos = todos.filter(t => t.tabId === activeTabId);
@@ -1173,7 +1294,6 @@
         itemEl.className = item.isDivider ? "todo-item todo-item-divider" : "todo-item";
         itemEl.draggable = true;
 
-        // Desktop Drag Events
         itemEl.addEventListener("dragstart", (e) => {
           draggedTodoId = item.id;
           e.dataTransfer.effectAllowed = "move";
@@ -1217,13 +1337,12 @@
           draggedTodoId = null;
         });
 
-        // Mobile Touch Drag Events Engine
         let touchStartTimer = null;
         let isTouchDragging = false;
         let lastTargetEl = null;
 
         itemEl.addEventListener("touchstart", (e) => {
-          if (e.target.closest("button") || e.target.closest("textarea") || e.target.closest("input")) return;
+          if (e.target.closest("button") || e.target.closest("textarea") || e.target.closest("input") || e.target.closest(".editable-input")) return;
 
           const touch = e.touches[0];
           draggedTodoId = item.id;
@@ -1285,11 +1404,10 @@
           }
         });
 
-        // 기본 삭제 버튼 생성
         const deleteBtn = document.createElement("button");
         deleteBtn.innerHTML = `<i class="ph ph-trash"></i>`;
         deleteBtn.title = "삭제";
-        deleteBtn.className = isTouchDevice ? "todo-delete-btn is-hidden" : "todo-delete-btn";
+        deleteBtn.className = "todo-delete-btn";
 
         deleteBtn.addEventListener("click", async () => {
           await _supabase
@@ -1303,11 +1421,6 @@
           const dividerContent = document.createElement("div");
           dividerContent.className = "todo-divider-line";
           itemEl.appendChild(dividerContent);
-          
-          if (isTouchDevice) {
-            deleteBtn.classList.remove("is-hidden");
-            deleteBtn.classList.add("todo-delete-btn-mobile");
-          }
         } else {
           const checkboxBtn = document.createElement("button");
           checkboxBtn.className = "todo-checkbox-btn";
@@ -1327,62 +1440,61 @@
           const textContainer = document.createElement("div");
           textContainer.className = "todo-text-wrapper";
 
-          const textEl = document.createElement("span");
+          const textEl = document.createElement("div");
           textEl.className = `todo-text ${item.completed ? "todo-text-completed" : ""}`;
-          textEl.textContent = item.text;
+          textEl.innerHTML = item.text;
 
-          // Edit Mode
+          // Edit Mode (WYSIWYG Editable)
           textEl.addEventListener("click", (e) => {
             e.stopPropagation();
 
-            if (isTouchDevice) {
-              deleteBtn.classList.remove("is-hidden");
-              deleteBtn.classList.add("todo-delete-btn-mobile");
-              deleteBtn.style.color = "#ef4444";
-            }
+            // 수정 중에는 우측 아이템 삭제 버튼을 숨겨 툴바 삭제 버튼만 표시되도록 조치
+            deleteBtn.style.display = "none";
 
-            const editWrapper = document.createElement("div");
-            editWrapper.className = "edit-input-wrapper";
+            const editContainer = document.createElement("div");
+            editContainer.className = "edit-container";
 
-            const editTextarea = document.createElement("textarea");
-            editTextarea.className = "input-field todo-textarea";
-            editTextarea.value = item.text;
+            const editableInput = document.createElement("div");
+            editableInput.className = "editable-input";
+            editableInput.contentEditable = "true";
+            editableInput.innerHTML = item.text;
 
-            const editUndoBtn = document.createElement("button");
-            editUndoBtn.className = "btn-base btn-icon-gray";
-            editUndoBtn.style.padding = "6px 8px";
-            editUndoBtn.style.height = "auto";
-            editUndoBtn.innerHTML = `<i class="ph ph-arrow-u-up-left" style="font-size: 16px;"></i>`;
-            editUndoBtn.title = "길게 누르면 연속 되돌리기";
-
-            editWrapper.appendChild(editTextarea);
-            editWrapper.appendChild(editUndoBtn);
-
-            const editUndoManager = new TextUndoManager(editTextarea);
-            bindPressAndHoldUndo(editUndoBtn, editUndoManager);
-
-            const adjustHeight = () => {
-              editTextarea.style.height = "auto";
-              editTextarea.style.height = editTextarea.scrollHeight + "px";
-            };
-
-            textContainer.replaceChild(editWrapper, textEl);
-            adjustHeight();
-            editTextarea.focus();
-            
-            editTextarea.setSelectionRange(editTextarea.value.length, editTextarea.value.length);
-            editTextarea.addEventListener("input", adjustHeight);
+            const styleToolbar = document.createElement("div");
+            styleToolbar.className = "style-toolbar";
 
             let isSaved = false;
+
+            // 수정용 서식 툴바 바인딩 (툴바 삭제 버튼 클릭 시 해당 할 일 삭제)
+            createStyleToolbar(styleToolbar, editableInput, async () => {
+              isSaved = true;
+              await _supabase
+                .from('todos')
+                .delete()
+                .eq('id', item.id);
+              await fetchTodos();
+            });
+
+            editContainer.appendChild(editableInput);
+            editContainer.appendChild(styleToolbar);
+
+            textContainer.replaceChild(editContainer, textEl);
+            editableInput.focus();
+
+            const range = document.createRange();
+            const sel = window.getSelection();
+            range.selectNodeContents(editableInput);
+            range.collapse(false);
+            sel.removeAllRanges();
+            sel.addRange(range);
 
             const saveEdit = async () => {
               if (isSaved) return;
               isSaved = true;
-              const newText = editTextarea.value.trim();
-              if (newText && newText !== item.text) {
+              const newHtml = editableInput.innerHTML.trim();
+              if (newHtml && newHtml !== item.text) {
                 await _supabase
                   .from('todos')
-                  .update({ text: newText })
+                  .update({ text: newHtml })
                   .eq('id', item.id);
                 await fetchTodos();
               } else {
@@ -1390,17 +1502,23 @@
               }
             };
 
-            editTextarea.addEventListener("blur", (e) => {
-              if (e.relatedTarget !== editUndoBtn && e.relatedTarget !== deleteBtn) {
-                saveEdit();
+            editableInput.addEventListener("blur", (e) => {
+              if (e.relatedTarget && styleToolbar.contains(e.relatedTarget)) {
+                return;
               }
+              setTimeout(() => {
+                if (!styleToolbar.contains(document.activeElement) && document.activeElement !== editableInput) {
+                  saveEdit();
+                }
+              }, 100);
             });
 
-            editTextarea.addEventListener("keydown", (e) => {
+            editableInput.addEventListener("keydown", (e) => {
               if (e.key === "Escape") {
                 isSaved = true;
                 renderTodos();
               } else if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+                e.preventDefault();
                 saveEdit();
               }
             });
