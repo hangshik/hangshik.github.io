@@ -353,6 +353,80 @@
     }
     .btn-divider:hover { background-color: #e5e7eb; }
 
+    /* 되살리기 버튼 */
+    .action-buttons {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 6px;
+      margin-top: 8px;
+    }
+
+    .btn-restore {
+      padding: 4px 10px;
+      background-color: #eff6ff;
+      color: #2563eb;
+      font-size: 12px;
+      border-radius: 8px;
+      border: 1px solid #bfdbfe;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      transition: background-color 0.15s;
+    }
+
+    .btn-restore:hover { background-color: #dbeafe; }
+
+    /* 삭제 목록 팝업 */
+    .restore-list {
+      max-height: 280px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-bottom: 16px;
+    }
+
+    .restore-empty {
+      text-align: center;
+      color: #9ca3af;
+      font-size: 13px;
+      padding: 24px 0;
+    }
+
+    .restore-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 9px 10px;
+      background-color: #f9fafb;
+      border-radius: 8px;
+      border: 1px solid #f3f4f6;
+    }
+
+    .restore-row-text {
+      flex: 1;
+      min-width: 0;
+      font-size: 12px;
+      color: #374151;
+      word-break: break-word;
+    }
+
+    .restore-row-type {
+      color: #9ca3af;
+      font-size: 11px;
+      flex-shrink: 0;
+    }
+
+    .restore-one-btn {
+      color: #2563eb;
+      padding: 4px;
+      font-size: 16px;
+      flex-shrink: 0;
+    }
+
+    .restore-one-btn:hover { color: #1d4ed8; }
+
     /* Todo Item Component */
     .todo-item {
       display: flex;
@@ -646,10 +720,13 @@
       <!-- Todo List Container -->
       <div id="todo-list" class="todo-list-container"></div>
       
-      <!-- 구분선 추가 버튼 -->
-      <div id="divider-btn-container" class="divider-container is-hidden">
+      <!-- 구분선 추가 / 되살리기 버튼 -->
+      <div id="divider-btn-container" class="action-buttons is-hidden">
         <button id="btn-add-divider" class="btn-divider">
           <i class="ph ph-minus"></i> 구분선 추가
+        </button>
+        <button id="btn-restore" class="btn-restore">
+          <i class="ph ph-arrow-counter-clockwise"></i> 되살리기
         </button>
       </div>
 
@@ -685,6 +762,20 @@
     </div>
   </div>
 
+  <!-- Deleted Todo Restore Modal -->
+  <div id="restore-modal" class="modal-overlay modal-overlay-light is-hidden">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 class="modal-title">삭제한 목록 되살리기</h3>
+        <button id="restore-modal-close-btn" class="modal-close-btn">
+          <i class="ph ph-x"></i>
+        </button>
+      </div>
+      <p class="modal-desc">휴지통 아이콘으로 삭제한 목록을 선택하여 되살릴 수 있습니다.</p>
+      <div id="restore-list" class="restore-list"></div>
+    </div>
+  </div>
+
   <!-- Delete Confirm Modal for Tabs -->
   <div id="delete-modal" class="modal-overlay modal-overlay-light is-hidden">
     <div class="modal-box">
@@ -716,6 +807,10 @@
     const todoListContainer = document.getElementById("todo-list");
     const dividerBtnContainer = document.getElementById("divider-btn-container");
     const btnAddDivider = document.getElementById("btn-add-divider");
+    const btnRestore = document.getElementById("btn-restore");
+    const restoreModal = document.getElementById("restore-modal");
+    const restoreModalCloseBtn = document.getElementById("restore-modal-close-btn");
+    const restoreList = document.getElementById("restore-list");
     const tabsContainer = document.getElementById("tabs-container");
     const btnAddTab = document.getElementById("btn-add-tab");
     const addModal = document.getElementById("add-modal");
@@ -766,6 +861,156 @@
     let draggedTabIdx = null;
     let draggedTodoId = null;
     let tabToDeleteId = null;
+
+    // 삭제된 목록 보관함
+    // 현재 구조에서는 Supabase의 todos 행을 실제로 삭제하되,
+    // 복구에 필요한 정보를 브라우저 localStorage에 함께 보관합니다.
+    const DELETED_TODOS_KEY = "todo_deleted_items";
+
+    function getDeletedTodos() {
+      try {
+        return JSON.parse(localStorage.getItem(DELETED_TODOS_KEY) || "[]");
+      } catch (e) {
+        console.error("삭제 목록 불러오기 실패:", e);
+        return [];
+      }
+    }
+
+    function saveDeletedTodos(items) {
+      localStorage.setItem(DELETED_TODOS_KEY, JSON.stringify(items));
+    }
+
+    function addDeletedTodo(item) {
+      const deleted = getDeletedTodos();
+
+      // 같은 ID가 이미 있다면 중복 저장하지 않습니다.
+      const filtered = deleted.filter(t => t.id !== item.id);
+
+      filtered.push({
+        id: item.id,
+        tabId: item.tabId,
+        text: item.text,
+        completed: item.completed,
+        isDivider: item.isDivider,
+        order: item.order,
+        createdAt: item.createdAt,
+        deletedAt: new Date().toISOString()
+      });
+
+      // 최근 삭제 항목이 위에 오도록 저장
+      filtered.sort((a, b) => new Date(b.deletedAt) - new Date(a.deletedAt));
+      saveDeletedTodos(filtered);
+    }
+
+    function removeDeletedTodo(id) {
+      saveDeletedTodos(getDeletedTodos().filter(t => t.id !== id));
+    }
+
+    function getRestoreText(item) {
+      if (item.isDivider) return "구분선";
+      const temp = document.createElement("div");
+      temp.innerHTML = item.text || "(내용 없음)";
+      return (temp.textContent || temp.innerText || "(내용 없음)").trim();
+    }
+
+    function renderRestoreList() {
+      const deleted = getDeletedTodos();
+
+      if (deleted.length === 0) {
+        restoreList.innerHTML = `<div class="restore-empty">삭제한 목록이 없습니다.</div>`;
+        return;
+      }
+
+      restoreList.innerHTML = "";
+
+      deleted.forEach(item => {
+        const row = document.createElement("div");
+        row.className = "restore-row";
+
+        const type = document.createElement("span");
+        type.className = "restore-row-type";
+        type.textContent = item.isDivider ? "구분선" : "할 일";
+
+        const text = document.createElement("span");
+        text.className = "restore-row-text";
+        text.textContent = getRestoreText(item);
+
+        const restoreBtn = document.createElement("button");
+        restoreBtn.className = "restore-one-btn";
+        restoreBtn.innerHTML = `<i class="ph ph-arrow-counter-clockwise"></i>`;
+        restoreBtn.title = "되살리기";
+
+        restoreBtn.addEventListener("click", async () => {
+          await restoreTodo(item);
+        });
+
+        row.appendChild(type);
+        row.appendChild(text);
+        row.appendChild(restoreBtn);
+        restoreList.appendChild(row);
+      });
+    }
+
+    async function restoreTodo(item) {
+      // 원래 메뉴가 이미 삭제된 경우에는 현재 메뉴로 복구합니다.
+      const targetTabId = tabs.some(t => t.id === item.tabId)
+        ? item.tabId
+        : activeTabId;
+
+      if (!targetTabId) {
+        alert("되살릴 메뉴가 없습니다.");
+        return;
+      }
+
+      const currentTabTodos = todos.filter(t => t.tabId === targetTabId);
+      const restoredOrder = item.order ?? (
+        currentTabTodos.length > 0
+          ? Math.max(...currentTabTodos.map(t => t.order || 0)) + 1
+          : 1
+      );
+
+      const insertData = {
+        tab_id: targetTabId,
+        text: item.text || "",
+        completed: !!item.completed,
+        is_divider: !!item.isDivider,
+        order: restoredOrder
+      };
+
+      // 원래 ID를 다시 사용할 수 있으면 그대로 복구합니다.
+      // 실패하면 새 ID로 한 번 더 시도합니다.
+      let { error } = await _supabase
+        .from("todos")
+        .insert({
+          id: item.id,
+          ...insertData
+        });
+
+      if (error) {
+        ({ error } = await _supabase
+          .from("todos")
+          .insert(insertData));
+      }
+
+      if (error) {
+        console.error("목록 되살리기 실패:", error);
+        alert("목록을 되살리는 중 오류가 발생했습니다.");
+        return;
+      }
+
+      removeDeletedTodo(item.id);
+      await fetchTodos();
+      renderRestoreList();
+    }
+
+    function openRestoreModal() {
+      renderRestoreList();
+      restoreModal.classList.remove("is-hidden");
+    }
+
+    function closeRestoreModal() {
+      restoreModal.classList.add("is-hidden");
+    }
 
     const isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
     let autoScrollInterval = null;
@@ -1277,7 +1522,8 @@
       const currentTodos = todos.filter(t => t.tabId === activeTabId);
 
       if (currentTodos.length === 0) {
-        dividerBtnContainer.classList.add("is-hidden");
+        // 되살리기 버튼은 삭제 목록이 있을 때에도 사용할 수 있도록 표시합니다.
+        dividerBtnContainer.classList.remove("is-hidden");
         todoListContainer.innerHTML = `
           <div class="empty-state">
             등록된 할 일이 없습니다. 상단에서 내용을 입력해 보세요!
@@ -1410,10 +1656,14 @@
         deleteBtn.className = "todo-delete-btn";
 
         deleteBtn.addEventListener("click", async () => {
+          // 삭제 전에 복구용 정보를 보관합니다.
+          addDeletedTodo(item);
+
           await _supabase
             .from('todos')
             .delete()
             .eq('id', item.id);
+
           await fetchTodos();
         });
 
@@ -1467,10 +1717,15 @@
             // 수정용 서식 툴바 바인딩 (툴바 삭제 버튼 클릭 시 해당 할 일 삭제)
             createStyleToolbar(styleToolbar, editableInput, async () => {
               isSaved = true;
+
+              // 삭제 전에 복구에 필요한 정보를 보관합니다.
+              addDeletedTodo(item);
+
               await _supabase
                 .from('todos')
                 .delete()
                 .eq('id', item.id);
+
               await fetchTodos();
             });
 
@@ -1555,6 +1810,19 @@
 
       await fetchTodos();
     }
+
+    btnRestore.addEventListener("click", openRestoreModal);
+    restoreModalCloseBtn.addEventListener("click", closeRestoreModal);
+
+    restoreModal.addEventListener("click", (e) => {
+      if (e.target === restoreModal) closeRestoreModal();
+    });
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && !restoreModal.classList.contains("is-hidden")) {
+        closeRestoreModal();
+      }
+    });
 
     document.addEventListener("DOMContentLoaded", checkAuth);
   </script>
