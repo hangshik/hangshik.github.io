@@ -74,13 +74,13 @@
 
         .container {
             max-width: 1152px; margin: 0 auto;
-            padding: 1rem 1.5rem; box-sizing: border-box;
+            padding: 0.75rem 0.5rem; box-sizing: border-box;
             display: flex; flex-direction: column;
             height: 100%; width: 100%;
         }
 
         @media (max-width: 640px) {
-            .container { padding: 0.5rem; }
+            .container { padding: 0.25rem 2px; }
         }
 
         button, input, select, textarea {
@@ -92,7 +92,7 @@
         /* 헤더 */
         .header {
             display: flex; justify-content: space-between; align-items: center;
-            margin-bottom: 0.75rem; flex-shrink: 0; width: 100%;
+            margin-bottom: 0.5rem; flex-shrink: 0; width: 100%;
         }
 
         .header-title { display: flex; align-items: center; gap: 0.25rem; }
@@ -131,7 +131,7 @@
         .btn-add:hover { background-color: var(--primary-hover); }
 
         @media (max-width: 640px) {
-            .header { margin-bottom: 0.4rem; }
+            .header { margin-bottom: 0.3rem; }
             .btn-title { font-size: 1.1rem; padding: 0.15rem 0.2rem; }
             .header-controls { gap: 0.15rem; }
             .btn-today { padding: 0.25rem 0.4rem; font-size: 0.75rem; }
@@ -315,6 +315,7 @@
             display: flex; align-items: center; gap: 0.75rem; padding: 0.65rem;
             background-color: var(--bg-panel); border-radius: var(--radius-md);
             cursor: pointer; border: 1px solid var(--border-color);
+            transition: border-color 0.15s, transform 0.15s, opacity 0.15s;
         }
         .day-event-item:hover { background-color: var(--bg-hover); }
         .day-event-color { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
@@ -445,11 +446,12 @@
         </div>
     </div>
 
+    <!-- 더보기 일정 모달 -->
     <div id="dayViewModal" class="modal-overlay hidden">
         <div class="modal-content">
             <h3 class="modal-title" id="dayViewTitle" style="margin-bottom: 1rem;">일정 목록</h3>
             <ul id="dayViewList" class="day-event-list"></ul>
-            <div class="modal-footer"><div class="modal-actions"><button onclick="closeModal('dayViewModal')" class="btn-default">닫기</button></div></div>
+            <div class="modal-footer"><div class="modal-actions"><button onclick="closeDayViewModal()" class="btn-default">닫기</button></div></div>
         </div>
     </div>
 
@@ -583,7 +585,7 @@
             }
         });
 
-        /* --- 모바일 터치 스와이프(좌/우 드래그) 이벤트 --- */
+        /* --- 모바일 터치 스와이프 이벤트 --- */
         let touchStartX = 0;
         let touchStartY = 0;
         let touchEndX = 0;
@@ -674,7 +676,11 @@
             if (parseLocalDate(startDate) > parseLocalDate(endDate)) return showToast('종료일은 시작일보다 이후여야 합니다.');
             if (recurrence !== 'none') color = 'bg-purple-500';
 
-            const eventObj = { id, title, startDate, endDate, recurrence, color, memo };
+            const existing = events.find(e => e.id === id);
+            const eventObj = { 
+                id, title, startDate, endDate, recurrence, color, memo,
+                order: existing ? existing.order : null
+            };
             const btns = document.querySelectorAll('.btn-save-event');
             
             try {
@@ -806,6 +812,10 @@
                 }
 
                 spans.sort((a, b) => {
+                    const orderA = (a.evt.order !== undefined && a.evt.order !== null) ? a.evt.order : 999999;
+                    const orderB = (b.evt.order !== undefined && b.evt.order !== null) ? b.evt.order : 999999;
+                    if (orderA !== orderB) return orderA - orderB;
+
                     let durA = a.endDay - a.startDay; let durB = b.endDay - b.startDay;
                     if (durB !== durA) return durB - durA; 
                     if (a.startDay !== b.startDay) return a.startDay - b.startDay; 
@@ -901,7 +911,7 @@
             document.getElementById('calendarGrid').innerHTML = html;
         }
 
-        /* --- Drag and Drop --- */
+        /* --- Drag and Drop (달력 타일 간 이동) --- */
         function dragStart(e, id) { e.dataTransfer.setData('text/plain', id); e.target.style.opacity = '0.5'; }
         document.addEventListener('dragend', e => { if(e.target.classList && e.target.classList.contains('event-block')) e.target.style.opacity = '1'; });
         
@@ -918,7 +928,11 @@
                 const newStart = parseLocalDate(dateStr);
                 const newEnd = new Date(newStart.getTime() + dur * 86400000);
                 
-                const updatedObj = { ...event, startDate: dateStr, endDate: `${newEnd.getFullYear()}-${String(newEnd.getMonth()+1).padStart(2,'0')}-${String(newEnd.getDate()).padStart(2,'0')}` };
+                const updatedObj = { 
+                    ...event, 
+                    startDate: dateStr, 
+                    endDate: `${newEnd.getFullYear()}-${String(newEnd.getMonth()+1).padStart(2,'0')}-${String(newEnd.getDate()).padStart(2,'0')}` 
+                };
                 
                 try {
                     showLoading(true);
@@ -930,11 +944,14 @@
             }
         }
 
-        /* --- Day View (더보기 모달) --- */
+        /* --- Day View (더보기 모달) 및 드래그 순서 변경 DB 연동 --- */
         function editEventFromDayView(id) {
             closeModal('dayViewModal', false, true);
             openEventModal(id);
         }
+
+        let draggedListIndex = null;
+        let touchDraggedEl = null;
 
         function openDayView(dateStr) {
             const [y, m, d] = dateStr.split('-');
@@ -947,13 +964,28 @@
             if (dayEvents.length === 0) {
                 ul.innerHTML = '<li style="text-align:center; padding:1rem; color:var(--text-muted);">일정이 없습니다.</li>';
             } else {
-                ul.innerHTML = dayEvents.map(evt => `
-                    <li class="day-event-item" style="justify-content: space-between;" onclick="editEventFromDayView('${evt.id}')">
-                        <div style="display:flex; align-items:center; gap:0.75rem; overflow:hidden; flex:1;">
+                ul.innerHTML = dayEvents.map((evt, idx) => `
+                    <li class="day-event-item" 
+                        draggable="true" 
+                        data-id="${evt.id}" 
+                        data-index="${idx}"
+                        ondragstart="handleListDragStart(event, ${idx})" 
+                        ondragover="handleListDragOver(event)" 
+                        ondragleave="handleListDragLeave(event)"
+                        ondrop="handleListDrop(event, ${idx})"
+                        ondragend="handleListDragEnd(event)"
+                        ontouchstart="handleListTouchStart(event)"
+                        ontouchmove="handleListTouchMove(event)"
+                        ontouchend="handleListTouchEnd(event)"
+                        style="justify-content: space-between; cursor: grab; user-select: none;" 
+                        onclick="editEventFromDayView('${evt.id}')">
+                        <div style="display:flex; align-items:center; gap:0.6rem; overflow:hidden; flex:1;">
+                            <i class="fa-solid fa-grip-lines" style="color:var(--text-muted); font-size:0.85rem; cursor:grab; flex-shrink:0;"></i>
                             <div class="day-event-color ${evt.color}"></div>
                             <div class="day-event-title">${evt.title}</div>
                         </div>
                         <button class="btn-icon" title="수정" style="padding:0.35rem; font-size:0.85rem; flex-shrink:0;" onclick="event.stopPropagation(); editEventFromDayView('${evt.id}')">
+                            <i class="fa-solid fa-pen"></i>
                         </button>
                     </li>
                 `).join('');
@@ -961,17 +993,146 @@
             openModalUI('dayViewModal');
         }
 
+        function handleListDragStart(e, index) {
+            draggedListIndex = index;
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', index);
+            e.currentTarget.style.opacity = '0.5';
+        }
+
+        function handleListDragOver(e) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            const target = e.currentTarget;
+            if (target && target.classList.contains('day-event-item')) {
+                target.style.borderColor = 'var(--primary)';
+            }
+        }
+
+        function handleListDragLeave(e) {
+            e.currentTarget.style.borderColor = 'var(--border-color)';
+        }
+
+        async function handleListDrop(e, dropIndex) {
+            e.preventDefault();
+            e.stopPropagation();
+            e.currentTarget.style.borderColor = 'var(--border-color)';
+            if (draggedListIndex === null || draggedListIndex === dropIndex) return;
+
+            const ul = document.getElementById('dayViewList');
+            const items = Array.from(ul.children);
+            const draggedItem = items[draggedListIndex];
+            const targetItem = items[dropIndex];
+
+            if (draggedListIndex < dropIndex) {
+                targetItem.after(draggedItem);
+            } else {
+                targetItem.before(draggedItem);
+            }
+            await reindexListItems();
+        }
+
+        function handleListDragEnd(e) {
+            e.currentTarget.style.opacity = '1';
+            draggedListIndex = null;
+            document.querySelectorAll('#dayViewList .day-event-item').forEach(el => el.style.borderColor = 'var(--border-color)');
+        }
+
+        function handleListTouchStart(e) {
+            touchDraggedEl = e.currentTarget;
+            touchDraggedEl.style.opacity = '0.6';
+        }
+
+        function handleListTouchMove(e) {
+            if (!touchDraggedEl) return;
+            e.preventDefault();
+            const touch = e.touches[0];
+            const targetEl = document.elementFromPoint(touch.clientX, touch.clientY);
+            if (!targetEl) return;
+
+            const item = targetEl.closest('.day-event-item');
+            const ul = document.getElementById('dayViewList');
+            if (item && item !== touchDraggedEl && item.parentNode === ul) {
+                const rect = item.getBoundingClientRect();
+                const next = (touch.clientY - rect.top) / (rect.bottom - rect.top) > 0.5;
+                ul.insertBefore(touchDraggedEl, next ? item.nextSibling : item);
+            }
+        }
+
+        async function handleListTouchEnd(e) {
+            if (touchDraggedEl) {
+                touchDraggedEl.style.opacity = '1';
+                touchDraggedEl = null;
+                await reindexListItems();
+            }
+        }
+
+        /* 변경된 order 값을 로컬 및 Supabase DB에 동시에 저장 */
+        async function applyListOrder() {
+            const ul = document.getElementById('dayViewList');
+            if (!ul) return;
+            
+            const items = Array.from(ul.children);
+            const updates = [];
+
+            items.forEach((item, index) => {
+                const id = item.getAttribute('data-id');
+                const evt = events.find(e => e.id === id);
+                if (evt) {
+                    if (evt.order !== index) {
+                        evt.order = index;
+                        updates.push({
+                            id: evt.id,
+                            title: evt.title,
+                            startDate: evt.startDate,
+                            endDate: evt.endDate,
+                            recurrence: evt.recurrence,
+                            color: evt.color,
+                            memo: evt.memo,
+                            order: index
+                        });
+                    }
+                }
+            });
+
+            if (updates.length > 0) {
+                try {
+                    const { error } = await supabaseClient.from('Calendar').upsert(updates);
+                    if (error) throw error;
+                } catch (err) {
+                    console.error('순서 저장 실패:', err);
+                    showToast('순서 저장 실패');
+                }
+            }
+        }
+
+        async function closeDayViewModal() {
+            await applyListOrder();
+            drawCalendar();
+            closeModal('dayViewModal');
+        }
+
+        async function reindexListItems() {
+            const ul = document.getElementById('dayViewList');
+            const items = Array.from(ul.children);
+            items.forEach((item, idx) => {
+                item.setAttribute('data-index', idx);
+                item.setAttribute('ondragstart', `handleListDragStart(event, ${idx})`);
+                item.setAttribute('ondrop', `handleListDrop(event, ${idx})`);
+            });
+            await applyListOrder();
+        }
+
         function getEventsForDate(dateObj) {
             const targetTime = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate()).getTime();
-            return events.filter(evt => {
+            const filtered = events.filter(evt => {
                 const sDate = parseLocalDate(evt.startDate);
                 const eDate = parseLocalDate(evt.endDate);
                 const sTime = sDate.getTime();
-                const eTime = eDate.getTime();
                 
                 if (targetTime < sTime) return false;
                 switch(evt.recurrence) {
-                    case 'none': return targetTime >= sTime && targetTime <= eTime;
+                    case 'none': return targetTime >= sTime && targetTime <= eDate.getTime();
                     case 'daily': return true;
                     case 'weekly': return dateObj.getDay() === sDate.getDay();
                     case 'monthly': return dateObj.getDate() === sDate.getDate();
@@ -982,6 +1143,22 @@
                         return oLunar.getMonth() === tLunar.getMonth() && oLunar.getDay() === tLunar.getDay();
                     default: return false;
                 }
+            });
+
+            return filtered.sort((a, b) => {
+                const orderA = (a.order !== undefined && a.order !== null) ? a.order : 999999;
+                const orderB = (b.order !== undefined && b.order !== null) ? b.order : 999999;
+                if (orderA !== orderB) return orderA - orderB;
+
+                const durA = Math.round((parseLocalDate(a.endDate) - parseLocalDate(a.startDate)) / 86400000) + 1;
+                const durB = Math.round((parseLocalDate(b.endDate) - parseLocalDate(b.startDate)) / 86400000) + 1;
+                if (durB !== durA) return durB - durA;
+
+                const startA = parseLocalDate(a.startDate).getTime();
+                const startB = parseLocalDate(b.startDate).getTime();
+                if (startA !== startB) return startA - startB;
+
+                return a.title.localeCompare(b.title);
             });
         }
 
