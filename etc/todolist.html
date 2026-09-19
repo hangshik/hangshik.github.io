@@ -300,8 +300,6 @@
     .todo-editable-input {
       flex: 1;
       min-height: 38px;
-      max-height: 200px;
-      overflow-y: auto;
       font-size: 14px;
       padding: 8px 12px;
       line-height: 1.4;
@@ -310,6 +308,7 @@
       outline: none;
       background-color: #ffffff;
       transition: border-color 0.15s, box-shadow 0.15s;
+      white-space: pre-wrap; /* Requirement 1 */
     }
     .todo-editable-input:focus {
       border-color: #3b82f6;
@@ -330,6 +329,66 @@
       margin: 4px 0;
       display: block;
       border: 1px solid #e5e7eb;
+      cursor: pointer; /* Requirement 2 */
+      transition: opacity 0.2s;
+    }
+    
+    .todo-editable-input img:hover,
+    .editable-input img:hover {
+      opacity: 0.8;
+    }
+
+    /* 이미지 래퍼 (PC에서 크기 조절 및 삭제) */
+    .img-wrapper {
+      position: relative;
+      display: inline-block;
+      resize: both;
+      overflow: hidden;
+      min-width: 50px;
+      min-height: 50px;
+      max-width: 100%;
+      border: 1px dashed transparent;
+      vertical-align: top;
+      margin: 4px;
+    }
+
+    .todo-editable-input .img-wrapper:hover,
+    .editable-input .img-wrapper:hover {
+      border-color: #3b82f6;
+    }
+
+    .img-wrapper img {
+      width: 100% !important;
+      height: 100% !important;
+      display: block;
+      object-fit: contain;
+      margin: 0;
+    }
+
+    .pc-img-delete {
+      position: absolute;
+      top: 4px;
+      right: 4px;
+      background-color: rgba(239, 68, 68, 0.9);
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      padding: 4px;
+      font-size: 14px;
+      cursor: pointer;
+      display: none;
+      z-index: 10;
+    }
+
+    .todo-editable-input .img-wrapper:hover .pc-img-delete,
+    .editable-input .img-wrapper:hover .pc-img-delete {
+      display: block;
+    }
+
+    /* 보기 모드에서는 크기 조절 및 삭제 비활성화 */
+    .todo-text .img-wrapper {
+      resize: none !important;
+      border-color: transparent !important;
     }
 
     .todo-list-container {
@@ -509,8 +568,6 @@
     .editable-input {
       width: 100%;
       min-height: 38px;
-      max-height: 250px;
-      overflow-y: auto;
       padding: 8px 12px;
       border: 1px solid #3b82f6;
       border-radius: 8px;
@@ -518,6 +575,7 @@
       outline: none;
       background-color: #ffffff;
       box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+      white-space: pre-wrap; /* Requirement 1 */
     }
 
     .style-toolbar {
@@ -661,6 +719,18 @@
       box-shadow: 0 1px 3px rgba(0,0,0,0.1);
     }
     .btn-modal-danger:hover { background-color: #b91c1c; }
+
+    .image-resize-group {
+      display: flex; 
+      gap: 8px; 
+      margin-bottom: 16px;
+    }
+    
+    .image-resize-btn {
+      flex: 1;
+      padding: 8px;
+      font-size: 13px;
+    }
   </style>
 </head>
 <body>
@@ -802,6 +872,12 @@
     </div>
   </div>
 
+  <!-- Requirement 2: Fullscreen Image Modal (Mobile) -->
+  <div id="fullscreen-image-modal" class="modal-overlay is-hidden" style="z-index: 1000; flex-direction: column; background-color: rgba(0,0,0,0.9);" onclick="this.classList.add('is-hidden')">
+    <button style="position: absolute; top: 16px; right: 16px; color: white; font-size: 32px;"><i class="ph ph-x"></i></button>
+    <img id="fullscreen-img" src="" style="max-width: 95vw; max-height: 85vh; object-fit: contain; border-radius: 8px;" />
+  </div>
+
   <script>
     const CORRECT_PASSWORD = "9859"; 
 
@@ -836,65 +912,91 @@
     const modalCancelBtn = document.getElementById("modal-cancel-btn");
     const modalConfirmBtn = document.getElementById("modal-confirm-btn");
 
-    /* ==========================================================================
-       기능 1 & 2 추가: 글씨체 스타일 유지 복사 & 이미지 붙여넣기 기능 핸들러
-       ========================================================================== */
+    // Elements for Fullscreen Image Modal (Mobile Requirement 2)
+    const fullscreenImageModal = document.getElementById("fullscreen-image-modal");
+    const fullscreenImg = document.getElementById("fullscreen-img");
+    
+    let activeEditModeCloseCallback = null; // Used for Requirement 3 (History Back)
 
-// 1. 텍스트 복사 시 모든 글씨체 및 서식을 제거하고 순수 텍스트만 전달
-document.addEventListener("copy", (e) => {
-  const selection = window.getSelection();
-  if (!selection || selection.isCollapsed) return;
+    // Requirement 4: Unified Paste handler for all editable inputs
+    function handlePaste(e) {
+      e.preventDefault();
+      
+      const items = (e.clipboardData || window.clipboardData).items;
+      let hasImage = false;
 
-  if (e.clipboardData) {
-    // 서식 정보(text/html)를 제거하고 순수 텍스트(text/plain)만 클립보드에 저장
-    e.clipboardData.setData("text/plain", selection.toString());
-    e.preventDefault();
-  }
-});
-
-    // 2. 캡처 이미지 붙여넣기(Paste) 처리 함수
-    function handleImagePaste(e, targetElement) {
-      const items = (e.clipboardData || e.originalEvent.clipboardData)?.items;
-      if (!items) return;
-
-      for (let i = 0; i < items.length; i++) {
-        if (items[i].type.indexOf("image") !== -1) {
-          e.preventDefault();
-          const blob = items[i].getAsFile();
-          const reader = new FileReader();
-
-          reader.onload = function (event) {
-            const img = document.createElement("img");
-            img.src = event.target.result;
+      if (items) {
+        for (let i = 0; i < items.length; i++) {
+          if (items[i].type.indexOf("image") !== -1) {
+            hasImage = true;
+            const blob = items[i].getAsFile();
+            const reader = new FileReader();
             
-            // 현재 커서 위치에 이미지 삽입
-            const selection = window.getSelection();
-            if (selection.rangeCount > 0) {
-              const range = selection.getRangeAt(0);
-              range.deleteContents();
-              range.insertNode(img);
-              
-              // 커서를 이미지 뒤로 이동
-              range.setStartAfter(img);
-              range.setEndAfter(img);
-              selection.removeAllRanges();
-              selection.addRange(range);
-            } else {
-              targetElement.appendChild(img);
-            }
-
-            // Undo 및 입력 상태 변경 이벤트 트리거
-            targetElement.dispatchEvent(new Event("input", { bubbles: true }));
-          };
-
-          reader.readAsDataURL(blob);
-          break;
+            reader.onload = function (event) {
+              // Insert image element wrapped for resizing and deleting on PC
+              const html = `<span class="img-wrapper" style="width: 250px; height: auto;"><img src="${event.target.result}" /><button class="pc-img-delete" contenteditable="false"><i class="ph ph-trash"></i></button></span>&nbsp;`;
+              document.execCommand('insertHTML', false, html);
+              // Trigger input event to update states/undo manager
+              e.target.dispatchEvent(new Event("input", { bubbles: true }));
+            };
+            
+            reader.readAsDataURL(blob);
+            break; // Stop after first image to prevent spam
+          }
         }
+      }
+
+      // If it wasn't an image, treat it as pure text and strip all formatting
+      if (!hasImage) {
+        const text = (e.originalEvent || e).clipboardData.getData('text/plain');
+        document.execCommand('insertText', false, text);
       }
     }
 
-    // 등록 입력창에 이미지 붙여넣기 이벤트 연동
-    todoInput.addEventListener("paste", (e) => handleImagePaste(e, todoInput));
+    // Event delegation for PC image deletion in editable areas
+    function setupImageDeleteDelegation(container) {
+      container.addEventListener('click', (e) => {
+        const delBtn = e.target.closest('.pc-img-delete');
+        if (delBtn) {
+          const wrapper = delBtn.closest('.img-wrapper');
+          if (wrapper) {
+            wrapper.remove();
+            container.dispatchEvent(new Event("input", { bubbles: true }));
+          }
+        }
+      });
+    }
+    
+    setupImageDeleteDelegation(todoInput);
+
+    // Attach to the main input
+    todoInput.addEventListener("paste", handlePaste);
+
+    // Requirement 2: Mobile Image Maximize Logic
+    function handleImageClick(e) {
+      const img = e.target.tagName === 'IMG' ? e.target : (e.target.closest('.img-wrapper') ? e.target.closest('.img-wrapper').querySelector('img') : null);
+      
+      if (img && isTouchDevice) {
+        fullscreenImg.src = img.src;
+        fullscreenImageModal.classList.remove("is-hidden");
+      }
+    }
+
+    // Attach image click delegation to the main input
+    todoInput.addEventListener("click", handleImageClick);
+
+
+    // Requirement 3: History State Management for Edit Mode
+    window.addEventListener('popstate', (e) => {
+      // If we popped out of the #edit hash (mobile back button pressed)
+      if (window.location.hash !== "#edit" && activeEditModeCloseCallback) {
+        activeEditModeCloseCallback(); 
+      }
+      // Also close the fullscreen image modal if it's open during a back navigation
+      if (!fullscreenImageModal.classList.contains("is-hidden")) {
+        fullscreenImageModal.classList.add("is-hidden");
+      }
+    });
 
     function checkAuth() {
       const isAuth = localStorage.getItem("app_authenticated");
@@ -1123,7 +1225,7 @@ document.addEventListener("copy", (e) => {
       }
     }
 
-    // 공통 WYSIWYG 서식 툴바 생성 함수 (선택 영역 유지 및 즉시 실행 + 우측 삭제 버튼)
+    // 공통 WYSIWYG 서식 툴바 생성 함수
     function createStyleToolbar(container, editableTarget, onDeleteCallback) {
       container.innerHTML = "";
 
@@ -1160,7 +1262,6 @@ document.addEventListener("copy", (e) => {
         container.appendChild(dot);
       });
 
-      // 툴바 우측 삭제 아이콘 생성
       const deleteBtn = document.createElement("button");
       deleteBtn.className = "btn-toolbar-delete";
       deleteBtn.innerHTML = `<i class="ph ph-trash"></i>`;
@@ -1182,18 +1283,15 @@ document.addEventListener("copy", (e) => {
       container.appendChild(deleteBtn);
     }
 
-    // 등록란 전용 툴바 초기화 (삭제 버튼 클릭 시 입력 내용 초기화)
     createStyleToolbar(inputStyleToolbar, todoInput, () => {
       todoInput.innerHTML = "";
       mainInputUndoManager.reset("");
     });
 
-    // 등록 입력창에 포커스가 들어오면 툴바 표시
     todoInput.addEventListener("focus", () => {
       inputStyleToolbar.classList.add("is-visible");
     });
 
-    // 등록 입력창에서 포커스가 완전히 해제되면 툴바 숨김
     todoInput.addEventListener("blur", () => {
       setTimeout(() => {
         if (document.activeElement !== todoInput &&
@@ -1771,14 +1869,45 @@ document.addEventListener("copy", (e) => {
             editableInput.className = "editable-input";
             editableInput.contentEditable = "true";
             editableInput.innerHTML = item.text;
+            
+            // 기존 이미지들을 img-wrapper로 감싸기 (PC 크기조절/삭제 기능 지원)
+            editableInput.querySelectorAll("img").forEach(img => {
+              if (!img.closest(".img-wrapper")) {
+                const wrapper = document.createElement("span");
+                wrapper.className = "img-wrapper";
+                wrapper.style.width = img.style.width || img.width + "px" || "250px";
+                wrapper.style.height = img.style.height || img.height + "px" || "auto";
+                
+                img.parentNode.insertBefore(wrapper, img);
+                wrapper.appendChild(img);
+                
+                img.style.width = "100%";
+                img.style.height = "100%";
+                
+                const delBtn = document.createElement("button");
+                delBtn.className = "pc-img-delete";
+                delBtn.contentEditable = "false";
+                delBtn.innerHTML = '<i class="ph ph-trash"></i>';
+                wrapper.appendChild(delBtn);
+              }
+            });
 
-            // 수정용 입력 영역에도 캡처 이미지 붙여넣기 연동
-            editableInput.addEventListener("paste", (evt) => handleImagePaste(evt, editableInput));
+            // Requirement 4: Attach universal paste handler
+            editableInput.addEventListener("paste", handlePaste);
+            // Requirement 2: Attach image click handler (Mobile Maximize)
+            editableInput.addEventListener("click", handleImageClick);
+            // PC Delete Image delegation
+            setupImageDeleteDelegation(editableInput);
 
             const styleToolbar = document.createElement("div");
             styleToolbar.className = "style-toolbar";
 
             let isSaved = false;
+
+            // Requirement 3: Push state to prevent immediate app exit via mobile back button
+            if (window.location.hash !== "#edit") {
+              window.history.pushState({ editMode: true }, "", "#edit");
+            }
 
             createStyleToolbar(styleToolbar, editableInput, async () => {
               isSaved = true;
@@ -1809,6 +1938,14 @@ document.addEventListener("copy", (e) => {
             const saveEdit = async () => {
               if (isSaved) return;
               isSaved = true;
+              
+              activeEditModeCloseCallback = null;
+
+              // Pop the back button state safely if closed naturally
+              if (window.location.hash === "#edit") {
+                window.history.back();
+              }
+
               const newHtml = editableInput.innerHTML.trim();
               if (newHtml && newHtml !== item.text) {
                 await _supabase
@@ -1820,6 +1957,9 @@ document.addEventListener("copy", (e) => {
                 renderTodos();
               }
             };
+
+            // Used globally by the `popstate` event to save text and close
+            activeEditModeCloseCallback = saveEdit;
 
             editableInput.addEventListener("blur", (e) => {
               if (e.relatedTarget && styleToolbar.contains(e.relatedTarget)) {
@@ -1835,6 +1975,9 @@ document.addEventListener("copy", (e) => {
             editableInput.addEventListener("keydown", (e) => {
               if (e.key === "Escape") {
                 isSaved = true;
+                if (window.location.hash === "#edit") {
+                  window.history.back();
+                }
                 renderTodos();
               } else if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
                 e.preventDefault();
