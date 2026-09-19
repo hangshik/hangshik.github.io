@@ -3,7 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>스마트 웹 캘린더</title>
+    <title>캘린더</title>
+    <!-- Pretendard Font (가독성 최적화 웹폰트) -->
+    <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" />
     <!-- Lunar Calendar Library -->
     <script src="https://cdn.jsdelivr.net/npm/lunar-javascript/lunar.min.js"></script>
     <!-- FontAwesome -->
@@ -63,11 +65,13 @@
         body {
             background-color: var(--bg-body);
             color: var(--text-main);
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            font-family: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, Roboto, "Helvetica Neue", "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", sans-serif;
             margin: 0; padding: 0;
             display: flex; flex-direction: column;
             height: 100vh; overflow: hidden;
             transition: background-color 0.2s, color 0.2s;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
         }
 
         .container {
@@ -748,7 +752,6 @@
                     if (span.slot >= MAX_SLOTS) {
                         for(let i=span.startDay; i<=span.endDay; i++) hiddenCounts[i]++;
                     } else {
-                        // 중첩 calc() 제거로 일정 위치/너비 오류 수정
                         let leftPercent = (span.startDay * 100) / 7;
                         let widthPercent = ((span.endDay - span.startDay + 1) * 100) / 7;
                         let top = `${span.slot * EVENT_HEIGHT}px`;
