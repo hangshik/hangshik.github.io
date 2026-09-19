@@ -483,9 +483,7 @@
 
             <div class="form-group">
                 <label class="form-label">삭제된 일정 복원 (3일 이내)</label>
-                <button onclick="openTrashModal()" class="form-control" style="text-align: left; display: flex; justify-content: space-between; align-items: center; cursor: pointer;">
-                    삭제된 일정 목록 <i class="fa-solid fa-chevron-right" style="color: var(--text-muted);"></i>
-                </button>
+                <ul id="settingsTrashList" class="day-event-list" style="max-height: 180px; overflow-y: auto; margin-top: 0.5rem;"></ul>
             </div>
             
             <div class="modal-footer"><div class="modal-actions">
@@ -500,14 +498,6 @@
             <h3 class="modal-title" style="margin-bottom: 1rem;">기념일 및 반복 일정</h3>
             <ul id="anniversaryList" class="day-event-list" style="max-height: 50vh; overflow-y: auto; margin-bottom: 1rem;"></ul>
             <div class="modal-footer"><div class="modal-actions"><button onclick="closeModal('anniversaryModal')" class="btn-default">뒤로가기</button></div></div>
-        </div>
-    </div>
-
-    <div id="trashModal" class="modal-overlay hidden">
-        <div class="modal-content">
-            <h3 class="modal-title" style="margin-bottom: 1rem;">삭제된 일정 목록</h3>
-            <ul id="trashList" class="day-event-list" style="max-height: 50vh; overflow-y: auto; margin-bottom: 1rem;"></ul>
-            <div class="modal-footer"><div class="modal-actions"><button onclick="closeModal('trashModal')" class="btn-default">뒤로가기</button></div></div>
         </div>
     </div>
 
@@ -564,23 +554,27 @@
             if (modal && modal.classList.contains('hidden')) {
                 modal.classList.remove('hidden');
                 activeModalsStack.push(id);
-                history.pushState({ modalId: id }, '');
+                if (history.state && history.state.modalId) {
+                    history.replaceState({ modalId: id }, '');
+                } else {
+                    history.pushState({ modalId: id }, '');
+                }
             }
         }
 
-        function closeModal(id, fromPopState = false) {
+        function closeModal(id, fromPopState = false, skipHistoryBack = false) {
             const modal = document.getElementById(id);
             if (modal && !modal.classList.contains('hidden')) {
                 modal.classList.add('hidden');
                 activeModalsStack = activeModalsStack.filter(mId => mId !== id);
-                if (!fromPopState && history.state && history.state.modalId === id) {
+                if (!fromPopState && !skipHistoryBack && history.state && history.state.modalId === id) {
                     history.back();
                 }
             }
         }
 
         window.addEventListener('popstate', (e) => {
-            const allModals = ['eventModal', 'yearModal', 'monthModal', 'dayViewModal', 'settingsModal', 'anniversaryModal', 'trashModal'];
+            const allModals = ['eventModal', 'yearModal', 'monthModal', 'dayViewModal', 'settingsModal', 'anniversaryModal'];
             let topModal = activeModalsStack.pop();
             if (topModal) {
                 closeModal(topModal, true);
@@ -638,7 +632,7 @@
 
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
-                const visibleModals = ['eventModal', 'yearModal', 'monthModal', 'dayViewModal', 'settingsModal', 'anniversaryModal', 'trashModal'];
+                const visibleModals = ['eventModal', 'yearModal', 'monthModal', 'dayViewModal', 'settingsModal', 'anniversaryModal'];
                 visibleModals.forEach(id => closeModal(id));
             } else if (e.key === 'Enter') {
                 const eventModal = document.getElementById('eventModal');
@@ -713,6 +707,7 @@
 
                 events = events.filter(e => e.id !== id);
                 showToast('삭제되었습니다.'); closeModal('eventModal'); closeModal('dayViewModal'); drawCalendar();
+                renderSettingsTrashList();
             } catch (err) { showToast('삭제에 실패했습니다.'); }
         }
 
@@ -935,7 +930,12 @@
             }
         }
 
-        /* --- Day View --- */
+        /* --- Day View (더보기 모달) --- */
+        function editEventFromDayView(id) {
+            closeModal('dayViewModal', false, true);
+            openEventModal(id);
+        }
+
         function openDayView(dateStr) {
             const [y, m, d] = dateStr.split('-');
             document.getElementById('dayViewTitle').innerText = `${y}년 ${parseInt(m)}월 ${parseInt(d)}일 일정`;
@@ -948,9 +948,13 @@
                 ul.innerHTML = '<li style="text-align:center; padding:1rem; color:var(--text-muted);">일정이 없습니다.</li>';
             } else {
                 ul.innerHTML = dayEvents.map(evt => `
-                    <li class="day-event-item" onclick="closeModal('dayViewModal'); openEventModal('${evt.id}')">
-                        <div class="day-event-color ${evt.color}"></div>
-                        <div class="day-event-title">${evt.title}</div>
+                    <li class="day-event-item" style="justify-content: space-between;" onclick="editEventFromDayView('${evt.id}')">
+                        <div style="display:flex; align-items:center; gap:0.75rem; overflow:hidden; flex:1;">
+                            <div class="day-event-color ${evt.color}"></div>
+                            <div class="day-event-title">${evt.title}</div>
+                        </div>
+                        <button class="btn-icon" title="수정" style="padding:0.35rem; font-size:0.85rem; flex-shrink:0;" onclick="event.stopPropagation(); editEventFromDayView('${evt.id}')">
+                        </button>
                     </li>
                 `).join('');
             }
@@ -1059,6 +1063,7 @@
         function openSettingsModal() {
             document.querySelector(`input[name="lunarSetting"][value="${lunarDisplayMode}"]`).checked = true;
             document.querySelector(`input[name="themeSetting"][value="${localStorage.getItem('theme') || 'light'}"]`).checked = true;
+            renderSettingsTrashList();
             openModalUI('settingsModal');
         }
         function saveSettings() {
@@ -1075,12 +1080,12 @@
         }
 
         function openAnniversaryModal() {
-            closeModal('settingsModal');
+            closeModal('settingsModal', false, true);
             const list = document.getElementById('anniversaryList');
             const rEvents = events.filter(e => e.recurrence !== 'none');
             if (rEvents.length === 0) list.innerHTML = '<li style="text-align:center; padding:1rem; color:var(--text-muted);">반복 일정이 없습니다.</li>';
             else list.innerHTML = rEvents.map(e => `
-                <li class="day-event-item" style="justify-content:space-between;" onclick="closeModal('anniversaryModal'); openEventModal('${e.id}')">
+                <li class="day-event-item" style="justify-content:space-between;" onclick="closeModal('anniversaryModal', false, true); openEventModal('${e.id}')">
                     <div style="display:flex; align-items:center; gap:0.5rem;"><div class="day-event-color ${e.color}"></div><div>${e.title}</div></div>
                     <div style="font-size:0.75rem; color:var(--text-muted);">${recurrenceText[e.recurrence]}</div>
                 </li>
@@ -1088,23 +1093,23 @@
             openModalUI('anniversaryModal');
         }
 
-        function openTrashModal() {
-            closeModal('settingsModal');
+        function renderSettingsTrashList() {
             const list = getTrashItems();
-            const ul = document.getElementById('trashList');
+            const ul = document.getElementById('settingsTrashList');
+            if (!ul) return;
             
             if (list.length === 0) {
-                ul.innerHTML = '<li style="text-align:center; padding:1rem; color:var(--text-muted);">삭제된 일정이 없습니다.</li>';
+                ul.innerHTML = '<li style="text-align:center; padding:0.75rem; color:var(--text-muted); font-size:0.8rem;">삭제된 일정이 없습니다.</li>';
             } else {
                 ul.innerHTML = list.map(item => {
                     const remainingHours = Math.max(0, Math.ceil((THREE_DAYS_MS - (Date.now() - item.deletedAt)) / (1000 * 60 * 60)));
                     return `
-                        <li class="day-event-item" style="justify-content:space-between;">
+                        <li class="day-event-item" style="justify-content:space-between; padding:0.5rem 0.65rem;">
                             <div style="display:flex; align-items:center; gap:0.5rem; overflow:hidden;">
                                 <div class="day-event-color ${item.color}"></div>
                                 <div style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
-                                    <div style="font-weight:bold; font-size:0.825rem;">${item.title}</div>
-                                    <div style="font-size:0.75rem; color:var(--text-muted);">${item.startDate} ~ ${item.endDate} (${remainingHours}시간 남음)</div>
+                                    <div style="font-weight:bold; font-size:0.8rem;">${item.title}</div>
+                                    <div style="font-size:0.7rem; color:var(--text-muted);">${item.startDate} ~ ${item.endDate} (${remainingHours}시간 남음)</div>
                                 </div>
                             </div>
                             <button onclick="restoreEvent('${item.id}')" class="btn-primary" style="padding:0.25rem 0.5rem; font-size:0.75rem; flex-shrink:0;">복원</button>
@@ -1112,7 +1117,6 @@
                     `;
                 }).join('');
             }
-            openModalUI('trashModal');
         }
 
         async function restoreEvent(id) {
@@ -1131,7 +1135,7 @@
                 saveTrashItems(newTrash);
 
                 showToast('일정이 복원되었습니다.');
-                openTrashModal();
+                renderSettingsTrashList();
                 drawCalendar();
             } catch (err) {
                 showToast('복원에 실패했습니다.');
