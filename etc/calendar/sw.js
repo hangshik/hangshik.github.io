@@ -8,5 +8,8 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  // 기본 네트워크 요청 처리
+  // PWA 오프라인 기본 핸들러
+  event.respondWith(
+    fetch(event.request).catch(() => caches.match(event.request))
+  );
 });

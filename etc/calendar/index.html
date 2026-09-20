@@ -8,11 +8,16 @@
     <!-- PWA 및 모바일 전체화면 설정 -->
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#2563eb">
+    
+    <!-- iOS 모바일 웹앱 (주소창 숨기기 및 전체화면) 설정 -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="캘린더">
-    <link rel="apple-touch-icon" href="icon/calendar.png">
+    <meta name="mobile-web-app-capable" content="yes">
 
+    <!-- 아이콘 및 파비콘 경로 수정 (루트 경로의 icon.png 연결) -->
+    <link rel="icon" type="image/png" href="icon.png">
+    <link rel="apple-touch-icon" href="icon.png">
 
     <!-- Pretendard Font -->
     <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" />
