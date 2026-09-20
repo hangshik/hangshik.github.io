@@ -21,8 +21,8 @@
 
     <!-- Pretendard Font -->
     <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" />
-    <!-- Lunar Calendar Library -->
-    <script src="https://cdn.jsdelivr.net/npm/lunar-javascript/lunar.min.js"></script>
+    <!-- 한국 음력 변환 라이브러리 (KARI/한국천문연구원 기준) -->
+    <script src="https://cdn.jsdelivr.net/npm/korean-lunar-calendar@0.4.0/dist/korean-lunar-calendar.min.js"></script>
     <!-- FontAwesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Supabase JS -->
@@ -120,20 +120,40 @@
 
         /* 헤더 */
         .header {
-            display: flex; justify-content: space-between; align-items: center;
-            margin-bottom: 0.5rem; flex-shrink: 0; width: 100%;
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            align-items: center;
+            margin-bottom: 0.5rem;
+            flex-shrink: 0;
+            width: 100%;
         }
 
-        .header-title { display: flex; align-items: center; gap: 0.25rem; }
+        /* 가운데 정렬되는 날짜 이동 영역: < 2026년 9월 > 오늘 */
+        .header-nav {
+            grid-column: 2;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.15rem;
+            white-space: nowrap;
+        }
+
+        .header-title { display: flex; align-items: center; gap: 0.1rem; }
 
         .btn-title {
             font-size: 1.35rem; font-weight: bold; background: none; border: none;
-            cursor: pointer; padding: 0.25rem 0.35rem; border-radius: var(--radius-md);
-            display: flex; align-items: center; gap: 0.2rem; white-space: nowrap;
+            cursor: pointer; padding: 0.25rem 0.25rem; border-radius: var(--radius-md);
+            display: flex; align-items: center; gap: 0.1rem; white-space: nowrap;
         }
         .btn-title:hover { background-color: var(--bg-hover); }
 
-        .header-controls { display: flex; align-items: center; gap: 0.35rem; }
+        .header-controls {
+            grid-column: 3;
+            justify-self: end;
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+        }
 
         .btn-icon {
             background: none; border: none; font-size: 0.95rem; cursor: pointer;
@@ -142,7 +162,17 @@
         }
         .btn-icon:hover { background-color: var(--bg-hover); }
 
+        /* 좌우 월 이동 화살표: 기존보다 1.2배 크게 */
+        .btn-nav-arrow {
+            font-size: 1.14rem;
+            padding: 0.4rem;
+            width: 2rem;
+            height: 2rem;
+        }
+
         /* 오늘 버튼 스타일 */
+        /* > 버튼과 오늘 버튼 사이 간격을 기존의 3배로 조정 */
+        .btn-nav-today { margin-left: 0.3rem; }
         .btn-today {
             background: none; border: 1px solid var(--border-color);
             padding: 0.3rem 0.65rem; border-radius: var(--radius-md);
@@ -172,10 +202,13 @@
 
         @media (max-width: 640px) {
             .header { margin-bottom: 0.3rem; }
-            .btn-title { font-size: 1.1rem; padding: 0.15rem 0.2rem; }
+            .header-nav { gap: 0.05rem; }
+            .btn-title { font-size: 1.1rem; padding: 0.15rem 0.12rem; }
             .header-controls { gap: 0.15rem; }
             .btn-today { padding: 0.25rem 0.4rem; font-size: 0.75rem; }
+            .btn-nav-today { margin-left: 0.1rem; }
             .btn-icon { padding: 0.3rem; font-size: 0.85rem; }
+            .btn-nav-arrow { font-size: 1.02rem; width: 1.75rem; height: 1.75rem; padding: 0.3rem; }
             .btn-add { width: 1.85rem; height: 1.85rem; font-size: 0.85rem; }
             .divider { margin: 0; }
         }
@@ -451,19 +484,28 @@
     <div class="container">
         <!-- Header -->
         <header class="header">
-            <div class="header-title">
-                <button onclick="openYearModal()" class="btn-title">
-                    <span id="currentYearText">2026</span>년
+            <div class="header-nav">
+                <button onclick="changeMonth(-1)" class="btn-icon btn-nav-arrow" aria-label="이전 달">
+                    <i class="fa-solid fa-chevron-left"></i>
                 </button>
-                <button onclick="openMonthModal()" class="btn-title">
-                    <span id="currentMonthText">9</span>월
+
+                <div class="header-title">
+                    <button onclick="openYearModal()" class="btn-title">
+                        <span id="currentYearText">2026</span>년
+                    </button>
+                    <button onclick="openMonthModal()" class="btn-title">
+                        <span id="currentMonthText">9</span>월
+                    </button>
+                </div>
+
+                <button onclick="changeMonth(1)" class="btn-icon btn-nav-arrow" aria-label="다음 달">
+                    <i class="fa-solid fa-chevron-right"></i>
                 </button>
+
+                <button id="todayBtn" onclick="goToToday()" class="btn-today btn-nav-today">오늘</button>
             </div>
-            
+
             <div class="header-controls">
-                <button onclick="changeMonth(-1)" class="btn-icon"><i class="fa-solid fa-chevron-left"></i></button>
-                <button id="todayBtn" onclick="goToToday()" class="btn-today">오늘</button>
-                <button onclick="changeMonth(1)" class="btn-icon"><i class="fa-solid fa-chevron-right"></i></button>
                 <div class="divider"></div>
                 <button onclick="openSettingsModal()" class="btn-icon" title="달력 설정"><i class="fa-solid fa-gear"></i></button>
                 <button onclick="openEventModal()" class="btn-add" title="일정 추가"><i class="fa-solid fa-plus"></i></button>
@@ -647,19 +689,245 @@
         const colors = ['bg-blue-500', 'bg-red-500', 'bg-green-500', 'bg-yellow-500', 'bg-pink-500', 'bg-indigo-500'];
         const recurrenceText = { 'daily': '매일', 'weekly': '매주', 'monthly': '매월', 'yearly': '매년 (양력)', 'yearly_lunar': '매년 (음력)' };
 
-        const solarHolidays = {
-            '01-01': '신정', '03-01': '3·1절', '05-05': '어린이날', '06-06': '현충일', 
-            '08-15': '광복절', '10-03': '개천절', '10-09': '한글날', '12-25': '성탄절'
-        };
-        const lunarHolidays = {
-            '01-01': '설날', '01-02': '설날 연휴', '04-08': '부처님오신날', 
-            '08-14': '추석 연휴', '08-15': '추석', '08-16': '추석 연휴'
-        };
-        const specificHolidays = {
-            '2026-03-02': '대체공휴일(3·1절)', '2026-05-25': '대체공휴일(부처님오신날)',
-            '2026-06-03': '전국동시지방선거', '2026-08-17': '대체공휴일(광복절)',
-            '2026-10-05': '대체공휴일(개천절)'
-        };
+        /* --- 대한민국 공휴일 및 대체공휴일 산출 로직 ---
+           2026년 5월 11일 시행 현행 규정을 기준으로 계산합니다.
+           ※ 공휴일법/관공서공휴일규정의 대체공휴일 규칙을 그대로 반영
+
+           대체공휴일 대상
+           1) 국경일(3·1절, 제헌절, 광복절, 개천절, 한글날),
+              부처님오신날, 노동절, 어린이날, 성탄절
+              → 토요일/일요일 또는 다른 공휴일과 겹치면 대체공휴일
+           2) 설날·추석 연휴
+              → 일요일 또는 다른 공휴일과 겹치면 대체공휴일
+           3) 신정·현충일·선거일은 대체공휴일 대상 아님
+           4) 대체공휴일이 다른 대체공휴일과 겹치거나 토요일에 지정되면
+              그 다음 첫 번째 비공휴일로 이동
+        */
+        let holidayCache = {};
+
+        function generateHolidaysForYear(year) {
+            if (holidayCache[year]) return holidayCache[year];
+
+            const hols = {};
+
+            // type:
+            // national = 국경일, lunar3 = 설날/추석, buddha, labor, children, christmas,
+            // jan1 = 신정, memorial = 현충일, election = 선거일
+            const add = (y, m, d, name, type, substituteEligible, options = {}) => {
+                const date = new Date(y, m - 1, d);
+                const k = formatDateToStr(date);
+                if (!hols[k]) hols[k] = [];
+                hols[k].push({
+                    name,
+                    type,
+                    substituteEligible: !!substituteEligible,
+                    overlapEligible: options.overlapEligible !== false,
+                    isSubstitute: false
+                });
+            };
+
+            const addDate = (date, name, type, substituteEligible, options = {}) => {
+                add(date.getFullYear(), date.getMonth() + 1, date.getDate(), name, type, substituteEligible, options);
+            };
+
+            const currentLaw = year >= 2026;
+
+            // 1. 양력 공휴일
+            add(year, 1, 1, '신정', 'jan1', false);
+
+            // 국경일: 현행법상 제헌절도 공휴일(2026.5.11 시행)
+            add(year, 3, 1, '3·1절', 'national', true);
+            add(year, 7, 17, '제헌절', 'national', currentLaw);
+            add(year, 8, 15, '광복절', 'national', true);
+            add(year, 10, 3, '개천절', 'national', true);
+            add(year, 10, 9, '한글날', 'national', true);
+
+            // 2026.5.1부터 노동절은 관공서 공휴일
+            if (currentLaw) {
+                add(year, 5, 1, '노동절', 'labor', true);
+            }
+
+            add(year, 5, 5, '어린이날', 'children', true);
+            add(year, 6, 6, '현충일', 'memorial', false);
+            add(year, 12, 25, '성탄절', 'christmas', year >= 2023);
+
+            // 2026 전국동시지방선거
+            if (year === 2026) {
+                add(2026, 6, 3, '전국동시지방선거', 'election', false, { overlapEligible: false });
+            }
+            // 향후 선거일은 법정 선거일이 공식 확정된 경우에만 별도 추가
+
+            // 2. 음력 공휴일
+            try {
+                const buddha = getSolarFromLunar(year, 4, 8, false);
+                if (buddha) {
+                    addDate(buddha, '부처님오신날', 'buddha', year >= 2023);
+                }
+
+                // 설날: 음력 1월 1일 전날·당일·다음날
+                const seollal = getSolarFromLunar(year, 1, 1, false);
+                if (seollal) {
+                    const sD = new Date(seollal);
+                    const sPrev = new Date(sD); sPrev.setDate(sPrev.getDate() - 1);
+                    const sNext = new Date(sD); sNext.setDate(sNext.getDate() + 1);
+                    addDate(sPrev, '설날 연휴', 'lunar3', year >= 2014);
+                    addDate(sD, '설날', 'lunar3', year >= 2014);
+                    addDate(sNext, '설날 연휴', 'lunar3', year >= 2014);
+                }
+
+                // 추석: 음력 8월 15일 전날·당일·다음날
+                const chuseok = getSolarFromLunar(year, 8, 15, false);
+                if (chuseok) {
+                    const cD = new Date(chuseok);
+                    const cPrev = new Date(cD); cPrev.setDate(cPrev.getDate() - 1);
+                    const cNext = new Date(cD); cNext.setDate(cNext.getDate() + 1);
+                    addDate(cPrev, '추석 연휴', 'lunar3', year >= 2014);
+                    addDate(cD, '추석', 'lunar3', year >= 2014);
+                    addDate(cNext, '추석 연휴', 'lunar3', year >= 2014);
+                }
+            } catch (e) {
+                console.error('Lunar calendar conversion error:', e);
+            }
+
+            // 3. 대체공휴일 계산
+            const finalHolidays = {};
+
+            const getItems = (date) => hols[formatDateToStr(date)] || [];
+
+            // 일요일도 공휴일이므로 '첫 번째 비공휴일'을 찾을 때 제외
+            const isBasePublicHoliday = (date) => {
+                const items = getItems(date);
+                return date.getDay() === 0 || items.length > 0;
+            };
+
+            // 대체공휴일이 이미 배정된 날짜도 공휴일로 간주
+            const isPublicHoliday = (date) => {
+                if (date.getDay() === 0) return true;
+                return getItems(date).length > 0;
+            };
+
+            // 다른 공휴일과 겹치는지 검사할 때 선거일은 제외
+            const hasOtherPublicHoliday = (date, currentItem) => {
+                const items = getItems(date);
+                return items.some(item => {
+                    if (item === currentItem) return false;
+                    if (item.type === 'election') return false;
+                    if (item.isSubstitute) return false;
+                    return true;
+                });
+            };
+
+            const shouldSubstitute = (date, item) => {
+                if (!item.substituteEligible) return false;
+
+                const dow = date.getDay();
+
+                // 설날/추석은 일요일 겹침만으로 대체공휴일 발생
+                if (item.type === 'lunar3') {
+                    if (dow === 0) return true;
+                    // 평일에 다른 공휴일과 겹침
+                    if (dow !== 0 && dow !== 6 && hasOtherPublicHoliday(date, item)) return true;
+                    return false;
+                }
+
+                // 그 밖의 대체공휴일 대상은 토/일 겹침
+                if (dow === 0 || dow === 6) return true;
+
+                // 평일에 다른 공휴일과 겹침
+                if (hasOtherPublicHoliday(date, item)) return true;
+
+                return false;
+            };
+
+            const addSubstitute = (sourceDate, sourceName) => {
+                let candidate = new Date(sourceDate);
+                let guard = 0;
+
+                // '그 공휴일 다음의 첫 번째 비공휴일'
+                while (guard++ < 370) {
+                    candidate.setDate(candidate.getDate() + 1);
+                    if (!isPublicHoliday(candidate)) break;
+                }
+
+                // 대체공휴일이 토요일이면 그 다음 첫 비공휴일로 이동
+                if (candidate.getDay() === 6) {
+                    do {
+                        candidate.setDate(candidate.getDate() + 1);
+                    } while (isPublicHoliday(candidate) && guard++ < 370);
+                }
+
+                const nk = formatDateToStr(candidate);
+                const substituteName = `대체공휴일(${sourceName})`;
+
+                if (!hols[nk]) hols[nk] = [];
+                hols[nk].push({
+                    name: substituteName,
+                    type: 'substitute',
+                    substituteEligible: false,
+                    overlapEligible: false,
+                    isSubstitute: true
+                });
+
+                finalHolidays[nk] = finalHolidays[nk]
+                    ? `${finalHolidays[nk]}, ${substituteName}`
+                    : substituteName;
+            };
+
+            // 원래 공휴일만 먼저 계산하고, 생성된 대체공휴일은 다시 대체하지 않음
+            const baseDates = Object.keys(hols)
+                .sort()
+                .map(k => {
+                    const [yy, mm, dd] = k.split('-').map(Number);
+                    return new Date(yy, mm - 1, dd);
+                });
+
+            for (const date of baseDates) {
+                const key = formatDateToStr(date);
+                const dayItems = (hols[key] || []).filter(item => !item.isSubstitute);
+                if (dayItems.length === 0) continue;
+
+                // 같은 날 여러 공휴일이 겹치는 경우, 대체 대상 항목만 판단
+                const eligibleItems = dayItems.filter(item => item.substituteEligible);
+                for (const item of eligibleItems) {
+                    if (shouldSubstitute(date, item, dayItems)) {
+                        // 같은 공휴일 묶음에서 여러 항목이 동시에 대체공휴일을 생성하면
+                        // 법령상 대체공휴일 중복은 다음 비공휴일로 순차 이동
+                        addSubstitute(date, item.name);
+                    }
+                }
+            }
+
+            // 모든 원래 공휴일을 최종 결과에 반영
+            Object.keys(hols).sort().forEach(k => {
+                if (!finalHolidays[k]) {
+                    const names = [...new Set(hols[k].map(item => item.name))];
+                    finalHolidays[k] = names.join(', ');
+                } else {
+                    const baseNames = hols[k]
+                        .filter(item => !item.isSubstitute)
+                        .map(item => item.name);
+                    const allNames = [...new Set([...baseNames, ...String(finalHolidays[k]).split(', ')])];
+                    finalHolidays[k] = allNames.join(', ');
+                }
+            });
+
+            holidayCache[year] = finalHolidays;
+            return finalHolidays;
+        }
+
+        // 해당 날짜의 공휴일 문자열 반환
+        function getHolidayName(y, m, d) {
+            const years = [y];
+            if (m === 1) years.push(y - 1);
+            if (m === 12) years.push(y + 1);
+
+            const k = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+            for (const yr of years) {
+                if (!holidayCache[yr]) generateHolidaysForYear(yr);
+                if (holidayCache[yr][k]) return holidayCache[yr][k];
+            }
+            return null;
+        }
 
         function parseLocalDate(str) {
             if(!str) return new Date();
@@ -677,6 +945,31 @@
 
         function getTodayStr() {
             return formatDateToStr(new Date());
+        }
+
+        // 한국 음력 변환기: KARI(한국천문연구원) 기준 데이터 사용
+        const koreanLunarCalendar = new KoreanLunarCalendar();
+
+        function getLunarInfo(dateObj) {
+            const y = dateObj.getFullYear();
+            const m = dateObj.getMonth() + 1;
+            const d = dateObj.getDate();
+
+            if (!koreanLunarCalendar.setSolarDate(y, m, d)) return null;
+
+            const lunar = koreanLunarCalendar.getLunarCalendar();
+            return {
+                year: lunar.year,
+                month: lunar.month,
+                day: lunar.day,
+                isLeap: !!lunar.intercalation
+            };
+        }
+
+        function getSolarFromLunar(year, month, day, isLeap = false) {
+            if (!koreanLunarCalendar.setLunarDate(year, month, day, isLeap)) return null;
+            const solar = koreanLunarCalendar.getSolarCalendar();
+            return new Date(solar.year, solar.month - 1, solar.day);
         }
 
         /* --- 시작일 변경 핸들러 --- */
@@ -750,7 +1043,7 @@
         let touchEndX = 0;
         let touchEndY = 0;
 
-        function initSwipeEvents() {
+function initSwipeEvents() {
             const wrapper = document.getElementById('calendarWrapper');
             if (!wrapper) return;
 
@@ -765,6 +1058,36 @@
                 handleSwipe();
             }, { passive: true });
         }
+
+        /* --- 마우스 가운데 휠 월 이동 제어 --- */
+        function initWheelEvents() {
+            const wrapper = document.getElementById('calendarWrapper');
+            if (!wrapper) return;
+
+            wrapper.addEventListener('wheel', (e) => {
+                // 모달이 열려있을 때는 휠 이동 방지 (모달 내부 스크롤 허용)
+                if (activeModalsStack.length > 0) return;
+
+                // 기본 스크롤 동작 방지
+                e.preventDefault();
+
+                if (e.deltaY > 0) {
+                    // 휠을 아래로 내릴 때: 다음 달
+                    changeMonth(1);
+                } else if (e.deltaY < 0) {
+                    // 휠을 위로 올릴 때: 전 달
+                    changeMonth(-1);
+                }
+            }, { passive: false });
+        }
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            initTheme(); renderColorPicker();
+            cleanExpiredTrash();
+            initSwipeEvents();
+            initWheelEvents(); // <--- 마우스 휠 이벤트 초기화 추가
+            await fetchEvents();
+        });
 
         function handleSwipe() {
             if (activeModalsStack.length > 0) return;
@@ -1015,7 +1338,6 @@
                     let visibleOnDay = 0;
                     spans.forEach(span => {
                         if (day >= span.startDay && day <= span.endDay) {
-                            // +1인 경우 일정을 그대로 보여주기 위해 조건 변경
                             if (span.slot < maxSlots || (totalOnDay === maxSlots + 1 && span.slot === maxSlots)) {
                                 visibleOnDay++;
                             }
@@ -1029,7 +1351,6 @@
                 spans.forEach(span => {
                     let isOverflown = false;
                     for (let d = span.startDay; d <= span.endDay; d++) {
-                        // hiddenCounts가 2 이상일 때만 넘침 처리 (+1인 경우엔 슬롯 확장되어 표시)
                         if (hiddenCounts[d] >= 2 && span.slot >= maxSlots) {
                             isOverflown = true;
                             break;
@@ -1058,7 +1379,6 @@
                     `;
                 });
 
-                // +2 이상일 때부터 더보기 버튼 노출
                 for (let day = 0; day < 7; day++) {
                     if (hiddenCounts[day] >= 2) {
                         let leftPercent = (day * 100) / 7;
@@ -1095,8 +1415,10 @@
                                 
                                 let lunarTxt = '';
                                 if (lunarDisplayMode !== 'NONE') {
-                                    const lunar = Solar.fromYmd(d.y, d.m + 1, d.d).getLunar();
-                                    if (lunarDisplayMode === 'ALL' || (lunarDisplayMode === '1_15' && (lunar.getDay() === 1 || lunar.getDay() === 15))) lunarTxt = `${lunar.getMonth()}.${lunar.getDay()}`;
+                                    const lunarInfo = getLunarInfo(d.dateObj);
+                                    if (lunarDisplayMode === 'ALL' || (lunarDisplayMode === '1_15' && (lunarInfo.day === 1 || lunarInfo.day === 15))) {
+                                        lunarTxt = `${lunarInfo.isLeap ? '윤' : ''}${lunarInfo.month}.${lunarInfo.day}`;
+                                    }
                                 }
                                 
                                 return `
@@ -1345,9 +1667,12 @@
                     case 'monthly': return dateObj.getDate() === sDate.getDate();
                     case 'yearly': return dateObj.getMonth() === sDate.getMonth() && dateObj.getDate() === sDate.getDate();
                     case 'yearly_lunar':
-                        const oLunar = Solar.fromYmd(sDate.getFullYear(), sDate.getMonth() + 1, sDate.getDate()).getLunar();
-                        const tLunar = Solar.fromYmd(dateObj.getFullYear(), dateObj.getMonth() + 1, dateObj.getDate()).getLunar();
-                        return oLunar.getMonth() === tLunar.getMonth() && oLunar.getDay() === tLunar.getDay();
+                        const oLunarInfo = getLunarInfo(sDate);
+                        const tLunarInfo = getLunarInfo(dateObj);
+                        if (!oLunarInfo || !tLunarInfo) return false;
+                        return oLunarInfo.month === tLunarInfo.month &&
+                               oLunarInfo.day === tLunarInfo.day &&
+                               oLunarInfo.isLeap === tLunarInfo.isLeap;
                     default: return false;
                 }
             });
@@ -1369,20 +1694,6 @@
             });
         }
 
-        function getHolidayName(y, m, d) {
-            const sm = String(m).padStart(2, '0'); const sd = String(d).padStart(2, '0');
-            const solarKey = `${sm}-${sd}`; const fullKey = `${y}-${sm}-${sd}`;
-            if (specificHolidays[fullKey]) return specificHolidays[fullKey];
-            if (solarHolidays[solarKey]) return solarHolidays[solarKey];
-
-            const solar = Solar.fromYmd(y, m, d); const lunar = solar.getLunar();
-            const lunarKey = `${String(lunar.getMonth()).padStart(2, '0')}-${String(lunar.getDay()).padStart(2, '0')}`;
-            if (lunarHolidays[lunarKey]) return lunarHolidays[lunarKey];
-            const tomorrow = solar.next(1).getLunar();
-            if (tomorrow.getMonth() === 1 && tomorrow.getDay() === 1) return '설날 연휴';
-            return null;
-        }
-
         function changeMonth(delta) { currentDate.setMonth(currentDate.getMonth() + delta); drawCalendar(); }
         function goToToday() { currentDate = new Date(); drawCalendar(); }
 
@@ -1393,8 +1704,10 @@
 
             if (recurrence === 'yearly_lunar' && startDateStr) {
                 const sDate = parseLocalDate(startDateStr);
-                const lunar = Solar.fromYmd(sDate.getFullYear(), sDate.getMonth() + 1, sDate.getDate()).getLunar();
-                displaySpan.innerText = `(음력 ${lunar.getMonth()}월 ${lunar.getDay()}일)`;
+                const lunarInfo = getLunarInfo(sDate);
+                displaySpan.innerText = lunarInfo
+                    ? `(음력 ${lunarInfo.isLeap ? '윤' : ''}${lunarInfo.month}월 ${lunarInfo.day}일)`
+                    : '';
             } else {
                 displaySpan.innerText = '';
             }
@@ -1518,9 +1831,10 @@
 
                     switch(e.recurrence) {
                         case 'yearly_lunar':
-                            const lunar = Solar.fromYmd(sDate.getFullYear(), sDate.getMonth() + 1, sDate.getDate()).getLunar();
-                            formattedDateLabel = `음력 ${lunar.getMonth()}월 ${lunar.getDay()}일`;
-                            sortKey = lunar.getMonth() * 100 + lunar.getDay();
+                            const lunarInfo = getLunarInfo(sDate);
+                            if (!lunarInfo) return { event: e, formattedDateLabel: e.startDate, sortKey: 999999 };
+                            formattedDateLabel = `음력 ${lunarInfo.isLeap ? '윤' : ''}${lunarInfo.month}월 ${lunarInfo.day}일`;
+                            sortKey = lunarInfo.month * 100 + lunarInfo.day + (lunarInfo.isLeap ? 0.5 : 0);
                             break;
                         case 'yearly':
                             formattedDateLabel = `매년 ${sDate.getMonth() + 1}월 ${sDate.getDate()}일`;
