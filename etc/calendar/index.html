@@ -1,0 +1,1344 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>캘린더</title>
+
+    <!-- PWA 및 모바일 전체화면 설정 -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#2563eb">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="캘린더">
+    <link rel="apple-touch-icon" href="icon/calendar.png">
+
+
+    <!-- Pretendard Font -->
+    <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" />
+    <!-- Lunar Calendar Library -->
+    <script src="https://cdn.jsdelivr.net/npm/lunar-javascript/lunar.min.js"></script>
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Supabase JS -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <style>
+        /* ==============================
+           CSS 변수 및 테마 설정
+        ============================== */
+        :root {
+            --bg-body: #f9fafb;
+            --bg-surface: #ffffff;
+            --bg-panel: #f3f4f6;
+            --bg-hover: #e5e7eb;
+            --bg-out-month: rgba(243, 244, 246, 0.6);
+            --text-main: #111827;
+            --text-muted: #6b7280;
+            --border-color: #e5e7eb;
+            
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --red: #ef4444;
+            --blue: #3b82f6;
+            
+            --modal-overlay: rgba(0, 0, 0, 0.5);
+            --shadow: 0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06);
+            --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);
+            --radius-md: 6px;
+            --radius-lg: 8px;
+        }
+
+        html.dark {
+            --bg-body: #111827;
+            --bg-surface: #1f2937;
+            --bg-panel: #374151;
+            --bg-hover: #4b5563;
+            --bg-out-month: rgba(31, 41, 55, 0.4);
+            --text-main: #f9fafb;
+            --text-muted: #9ca3af;
+            --border-color: #374151;
+        }
+
+        /* DB 색상 클래스 */
+        .bg-blue-500 { background-color: #3b82f6 !important; color: #fff !important; }
+        .bg-red-500 { background-color: #ef4444 !important; color: #fff !important; }
+        .bg-green-500 { background-color: #22c55e !important; color: #fff !important; }
+        .bg-yellow-500 { background-color: #eab308 !important; color: #fff !important; }
+        .bg-pink-500 { background-color: #ec4899 !important; color: #fff !important; }
+        .bg-indigo-500 { background-color: #6366f1 !important; color: #fff !important; }
+        .bg-purple-500 { background-color: #a855f7 !important; color: #fff !important; }
+
+        /* 기본 초기화 */
+        body {
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            font-family: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+            margin: 0; padding: 0;
+            display: flex; flex-direction: column;
+            height: 100vh; overflow: hidden;
+            transition: background-color 0.2s, color 0.2s;
+            -webkit-font-smoothing: antialiased;
+            touch-action: manipulation;
+        }
+
+        .container {
+            max-width: 1152px; margin: 0 auto;
+            padding: 0.75rem 0.5rem; box-sizing: border-box;
+            display: flex; flex-direction: column;
+            height: 100%; width: 100%;
+        }
+
+        @media (max-width: 640px) {
+            .container { padding: 0.25rem 2px; }
+        }
+
+        button, input, select, textarea {
+            font-family: inherit; color: inherit; box-sizing: border-box;
+        }
+
+        .hidden { display: none !important; }
+
+        /* 헤더 */
+        .header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 0.5rem; flex-shrink: 0; width: 100%;
+        }
+
+        .header-title { display: flex; align-items: center; gap: 0.25rem; }
+
+        .btn-title {
+            font-size: 1.35rem; font-weight: bold; background: none; border: none;
+            cursor: pointer; padding: 0.25rem 0.35rem; border-radius: var(--radius-md);
+            display: flex; align-items: center; gap: 0.2rem; white-space: nowrap;
+        }
+        .btn-title:hover { background-color: var(--bg-hover); }
+
+        .header-controls { display: flex; align-items: center; gap: 0.35rem; }
+
+        .btn-icon {
+            background: none; border: none; font-size: 0.95rem; cursor: pointer;
+            padding: 0.4rem; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+            color: var(--text-main);
+        }
+        .btn-icon:hover { background-color: var(--bg-hover); }
+
+        .btn-today {
+            background: none; border: 1px solid var(--border-color);
+            padding: 0.3rem 0.65rem; border-radius: var(--radius-md);
+            font-size: 0.825rem; font-weight: 500; cursor: pointer; white-space: nowrap;
+        }
+        .btn-today:hover { background-color: var(--bg-hover); }
+
+        .divider { width: 1px; height: 1.25rem; background-color: var(--border-color); margin: 0 0.1rem; }
+
+        .btn-add {
+            background-color: var(--primary); color: #fff; border: none;
+            width: 2.1rem; height: 2.1rem; border-radius: var(--radius-md);
+            font-size: 0.95rem; cursor: pointer; display: flex; align-items: center; justify-content: center;
+            box-shadow: var(--shadow); flex-shrink: 0;
+        }
+        .btn-add:hover { background-color: var(--primary-hover); }
+
+        @media (max-width: 640px) {
+            .header { margin-bottom: 0.3rem; }
+            .btn-title { font-size: 1.1rem; padding: 0.15rem 0.2rem; }
+            .header-controls { gap: 0.15rem; }
+            .btn-today { padding: 0.25rem 0.4rem; font-size: 0.75rem; }
+            .btn-icon { padding: 0.3rem; font-size: 0.85rem; }
+            .btn-add { width: 1.85rem; height: 1.85rem; font-size: 0.85rem; }
+            .divider { margin: 0; }
+        }
+
+        /* 달력 그리드 */
+        .calendar-wrapper {
+            flex: 1; display: flex; flex-direction: column;
+            background-color: var(--bg-surface);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow);
+            overflow: hidden; position: relative;
+            user-select: none;
+        }
+
+        .days-header {
+            display: grid; grid-template-columns: repeat(7, 1fr);
+            border-bottom: 1px solid var(--border-color);
+            background-color: var(--bg-panel); flex-shrink: 0;
+        }
+        .days-header div {
+            text-align: center; padding: 0.5rem 0; font-size: 0.825rem; font-weight: 600;
+        }
+        .text-sun { color: var(--red); }
+        .text-sat { color: var(--blue); }
+
+        @media (max-width: 640px) {
+            .days-header div { padding: 0.35rem 0; font-size: 0.75rem; }
+        }
+
+        .calendar-grid {
+            display: flex; flex-direction: column; flex: 1;
+            background-color: var(--bg-panel); min-height: 0;
+        }
+
+        .week-row {
+            flex: 1; display: flex; flex-direction: column; position: relative;
+            border-bottom: 1px solid var(--border-color); overflow: hidden;
+            min-height: 60px;
+        }
+        .week-row:last-child { border-bottom: none; }
+
+        .bg-grid {
+            position: absolute; inset: 0; display: grid; grid-template-columns: repeat(7, 1fr);
+        }
+        .bg-cell {
+            border-right: 1px solid var(--border-color); position: relative;
+            background-color: var(--bg-surface); cursor: pointer;
+        }
+        .bg-cell:last-child { border-right: none; }
+        .bg-cell.out-month { background-color: var(--bg-out-month); }
+        .bg-cell:hover { background-color: rgba(0, 0, 0, 0.02); }
+        .dark .bg-cell:hover { background-color: rgba(255, 255, 255, 0.02); }
+
+        .more-indicator {
+            position: absolute; bottom: 2px; right: 2px;
+            font-size: 0.65rem; font-weight: bold; color: var(--primary);
+            background-color: var(--bg-surface); border: 1px solid var(--border-color);
+            padding: 1px 4px; border-radius: 6px; cursor: pointer; z-index: 35;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1); line-height: 1.1;
+        }
+        .more-indicator:hover { background-color: var(--bg-hover); }
+
+        .date-header-grid {
+            display: grid; grid-template-columns: repeat(7, 1fr);
+            position: relative; z-index: 10; pointer-events: none; flex-shrink: 0;
+        }
+        .date-cell-info {
+            padding: 3px 4px; display: flex; flex-direction: column; gap: 2px;
+            overflow: hidden; box-sizing: border-box;
+        }
+        .date-top-row {
+            display: flex; justify-content: space-between; align-items: center; width: 100%;
+        }
+        .date-num { font-size: 0.85rem; font-weight: 500; line-height: 1; }
+        .date-num.today {
+            background-color: var(--primary); color: #fff; width: 1.35rem; height: 1.35rem;
+            display: flex; align-items: center; justify-content: center; border-radius: 50%; font-weight: bold;
+            font-size: 0.8rem;
+        }
+        .date-num.muted { color: var(--text-muted); }
+        .date-holiday {
+            font-size: 0.6rem; color: var(--red); background: rgba(239, 68, 68, 0.1);
+            padding: 1px 3px; border-radius: 3px; white-space: nowrap; overflow: hidden;
+            text-overflow: ellipsis; max-width: 100%; display: block; line-height: 1.1;
+        }
+        .date-lunar { font-size: 0.6rem; color: var(--text-muted); line-height: 1; }
+
+        @media (max-width: 640px) {
+            .date-cell-info { padding: 2px; gap: 1px; }
+            .date-num { font-size: 0.75rem; }
+            .date-num.today { width: 1.15rem; height: 1.15rem; font-size: 0.7rem; }
+            .date-holiday { font-size: 0.52rem; padding: 0 2px; }
+            .date-lunar { font-size: 0.52rem; }
+        }
+
+        .event-layer {
+            position: relative; flex: 1; z-index: 20; width: 100%;
+            pointer-events: none;
+        }
+        
+        .event-block {
+            position: absolute; height: 18px; border-radius: 4px;
+            font-size: 0.65rem; font-weight: 500; padding: 0 5px;
+            display: block; text-align: left; line-height: 18px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1); cursor: pointer;
+            pointer-events: auto;
+            overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+            box-sizing: border-box;
+        }
+        .event-block:hover { filter: brightness(0.95); }
+        .event-block:active { transform: scale(0.99); }
+        
+        .event-block.clip-start { border-top-left-radius: 0; border-bottom-left-radius: 0; }
+        .event-block.clip-end { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+
+        @media (max-width: 640px) {
+            .event-block { height: 16px; line-height: 16px; font-size: 0.6rem; padding: 0 3px; }
+        }
+
+        /* 모달 공통 */
+        .modal-overlay {
+            position: fixed; inset: 0; background-color: var(--modal-overlay);
+            display: flex; justify-content: center; align-items: center;
+            z-index: 50; padding: 1rem;
+        }
+        .modal-content {
+            background-color: var(--bg-surface); border-radius: var(--radius-lg);
+            width: 100%; max-width: 400px; padding: 1.25rem; box-shadow: var(--shadow-lg);
+            max-height: 85vh; overflow-y: auto; box-sizing: border-box;
+        }
+        .modal-header-flex {
+            display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;
+        }
+        .modal-title { font-size: 1.15rem; font-weight: bold; margin: 0; }
+        
+        .form-group { margin-bottom: 0.85rem; }
+        .form-label { display: block; font-size: 0.825rem; font-weight: 500; margin-bottom: 0.35rem; }
+        .form-control {
+            width: 100%; padding: 0.5rem 0.65rem; border: 1px solid var(--border-color);
+            border-radius: var(--radius-md); background-color: var(--bg-surface);
+            font-size: 0.85rem; outline: none;
+        }
+        .form-control:focus { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2); }
+
+        .modal-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 1.25rem; }
+        .modal-actions { display: flex; gap: 0.5rem; margin-left: auto; }
+        
+        .btn-default {
+            padding: 0.45rem 0.85rem; border: 1px solid var(--border-color); background: var(--bg-surface);
+            border-radius: var(--radius-md); font-size: 0.825rem; cursor: pointer;
+        }
+        .btn-default:hover { background-color: var(--bg-hover); }
+        
+        .btn-primary {
+            padding: 0.45rem 0.85rem; border: none; background: var(--primary); color: white;
+            border-radius: var(--radius-md); font-size: 0.825rem; cursor: pointer;
+        }
+        .btn-primary:hover { background-color: var(--primary-hover); }
+        
+        .btn-danger { background: none; border: none; color: var(--red); font-size: 0.825rem; font-weight: 500; cursor: pointer; }
+        .btn-danger:hover { text-decoration: underline; }
+
+        .color-picker { display: flex; gap: 0.65rem; }
+        .color-circle {
+            width: 1.35rem; height: 1.35rem; border-radius: 50%; cursor: pointer;
+            border: 2px solid transparent; outline: 2px solid transparent; outline-offset: 1px;
+        }
+        .color-circle.active { outline-color: var(--primary); }
+
+        .radio-group { display: flex; flex-direction: column; gap: 0.5rem; }
+        .radio-group.row { flex-direction: row; gap: 1.25rem; }
+        .radio-label { display: flex; align-items: center; gap: 0.4rem; font-size: 0.825rem; cursor: pointer; }
+
+        .day-event-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.5rem; }
+        .day-event-item {
+            display: flex; align-items: center; gap: 0.75rem; padding: 0.65rem;
+            background-color: var(--bg-panel); border-radius: var(--radius-md);
+            cursor: pointer; border: 1px solid var(--border-color);
+            transition: border-color 0.15s, transform 0.15s, opacity 0.15s;
+        }
+        .day-event-item:hover { background-color: var(--bg-hover); }
+        .day-event-color { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+        .day-event-title { font-size: 0.825rem; font-weight: 500; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+        .loading-overlay {
+            position: absolute; inset: 0; background: rgba(255,255,255,0.7);
+            display: flex; justify-content: center; align-items: center; z-index: 50;
+        }
+        .dark .loading-overlay { background: rgba(31, 41, 55, 0.7); }
+        .toast {
+            position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%);
+            background: #1f2937; color: white; padding: 0.5rem 1rem; border-radius: 20px;
+            font-size: 0.825rem; opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 100;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-title">
+                <button onclick="openYearModal()" class="btn-title">
+                    <span id="currentYearText">2026</span>년
+                </button>
+                <button onclick="openMonthModal()" class="btn-title">
+                    <span id="currentMonthText">9</span>월
+                </button>
+            </div>
+            
+            <div class="header-controls">
+                <button onclick="changeMonth(-1)" class="btn-icon"><i class="fa-solid fa-chevron-left"></i></button>
+                <button onclick="goToToday()" class="btn-today">오늘</button>
+                <button onclick="changeMonth(1)" class="btn-icon"><i class="fa-solid fa-chevron-right"></i></button>
+                <div class="divider"></div>
+                <button onclick="openSettingsModal()" class="btn-icon" title="달력 설정"><i class="fa-solid fa-gear"></i></button>
+                <button onclick="openEventModal()" class="btn-add" title="일정 추가"><i class="fa-solid fa-plus"></i></button>
+            </div>
+        </header>
+
+        <!-- Calendar Grid -->
+        <div class="calendar-wrapper" id="calendarWrapper">
+            <div id="loadingOverlay" class="loading-overlay hidden">
+                <i class="fa-solid fa-spinner fa-spin fa-2x text-blue-500" style="color: #3b82f6;"></i>
+            </div>
+
+            <div class="days-header">
+                <div class="text-sun">일</div><div>월</div><div>화</div><div>수</div>
+                <div>목</div><div>금</div><div class="text-sat">토</div>
+            </div>
+            
+            <div id="calendarGrid" class="calendar-grid"></div>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <div id="yearModal" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 300px;">
+            <h3 class="modal-title" style="margin-bottom: 1rem;">년도 선택</h3>
+            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.5rem; height: 250px; overflow-y: auto; padding: 0.5rem; border: 1px solid var(--border-color); border-radius: var(--radius-md); background: var(--bg-panel);" id="modalYearListOnly"></div>
+            <div class="modal-footer"><div class="modal-actions"><button onclick="closeModal('yearModal')" class="btn-default">취소</button></div></div>
+        </div>
+    </div>
+
+    <div id="monthModal" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 250px;">
+            <h3 class="modal-title" style="margin-bottom: 1rem;">월 선택</h3>
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem;" id="modalMonthListOnly"></div>
+            <div class="modal-footer"><div class="modal-actions"><button onclick="closeModal('monthModal')" class="btn-default">취소</button></div></div>
+        </div>
+    </div>
+
+    <div id="eventModal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <div class="modal-header-flex">
+                <h3 class="modal-title" id="eventModalTitle">일정 추가</h3>
+                <button onclick="saveEvent()" class="btn-primary btn-save-event">저장</button>
+            </div>
+            <input type="hidden" id="eventId">
+            
+            <div class="form-group">
+                <label class="form-label">일정 제목</label>
+                <input type="text" id="eventTitle" placeholder="제목 추가" class="form-control">
+            </div>
+            
+            <div class="form-group" style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+                <div>
+                    <label class="form-label">시작일</label>
+                    <input type="date" id="eventStartDate" class="form-control" onclick="this.showPicker()">
+                </div>
+                <div>
+                    <label class="form-label">종료일</label>
+                    <input type="date" id="eventEndDate" class="form-control" onclick="this.showPicker()">
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">라벨 색상</label>
+                <div class="color-picker" id="colorPicker"></div>
+                <input type="hidden" id="eventColor" value="bg-blue-500">
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">메모</label>
+                <textarea id="eventMemo" rows="2" class="form-control"></textarea>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">반복 설정 (기념일)</label>
+                <select id="eventRecurrence" class="form-control">
+                    <option value="none">반복 안함</option>
+                    <option value="daily">매일</option>
+                    <option value="weekly">매주</option>
+                    <option value="monthly">매월 (양력)</option>
+                    <option value="yearly">매년 (양력)</option>
+                    <option value="yearly_lunar">매년 (음력)</option>
+                </select>
+            </div>
+            
+            <div class="modal-footer">
+                <button id="deleteEventBtn" onclick="deleteEvent()" class="btn-danger hidden">삭제</button>
+                <div class="modal-actions">
+                    <button onclick="closeModal('eventModal')" class="btn-default">취소</button>
+                    <button onclick="saveEvent()" class="btn-primary btn-save-event" id="saveEventBtn">저장</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 더보기 일정 모달 -->
+    <div id="dayViewModal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <h3 class="modal-title" id="dayViewTitle" style="margin-bottom: 1rem;">일정 목록</h3>
+            <ul id="dayViewList" class="day-event-list"></ul>
+            <div class="modal-footer"><div class="modal-actions"><button onclick="closeDayViewModal()" class="btn-default">닫기</button></div></div>
+        </div>
+    </div>
+
+    <div id="settingsModal" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 350px;">
+            <h3 class="modal-title" style="margin-bottom: 1rem;">달력 설정</h3>
+            
+            <div class="form-group">
+                <label class="form-label">테마 설정</label>
+                <div class="radio-group row">
+                    <label class="radio-label"><input type="radio" name="themeSetting" value="light"> 라이트 모드</label>
+                    <label class="radio-label"><input type="radio" name="themeSetting" value="dark"> 다크 모드</label>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">음력 표시 설정</label>
+                <div class="radio-group">
+                    <label class="radio-label"><input type="radio" name="lunarSetting" value="ALL"> 모든 날짜 표시</label>
+                    <label class="radio-label"><input type="radio" name="lunarSetting" value="1_15"> 1일, 15일만 표시</label>
+                    <label class="radio-label"><input type="radio" name="lunarSetting" value="NONE"> 표시 안함</label>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">기념일 및 반복 일정 관리</label>
+                <button onclick="openAnniversaryModal()" class="form-control" style="text-align: left; display: flex; justify-content: space-between; align-items: center; cursor: pointer;">
+                    목록 확인하기 <i class="fa-solid fa-chevron-right" style="color: var(--text-muted);"></i>
+                </button>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">삭제된 일정 복원 (3일 이내)</label>
+                <ul id="settingsTrashList" class="day-event-list" style="max-height: 180px; overflow-y: auto; margin-top: 0.5rem;"></ul>
+            </div>
+            
+            <div class="modal-footer"><div class="modal-actions">
+                <button onclick="closeModal('settingsModal')" class="btn-default">취소</button>
+                <button onclick="saveSettings()" class="btn-primary">적용</button>
+            </div></div>
+        </div>
+    </div>
+
+    <div id="anniversaryModal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <h3 class="modal-title" style="margin-bottom: 1rem;">기념일 및 반복 일정</h3>
+            <ul id="anniversaryList" class="day-event-list" style="max-height: 50vh; overflow-y: auto; margin-bottom: 1rem;"></ul>
+            <div class="modal-footer"><div class="modal-actions"><button onclick="closeModal('anniversaryModal')" class="btn-default">뒤로가기</button></div></div>
+        </div>
+    </div>
+
+    <div id="toast" class="toast"></div>
+
+    <script>
+        // PWA 서비스 워커 등록
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(reg => console.log('PWA 서비스 워커 등록 완료'))
+                    .catch(err => console.error('PWA 서비스 워커 등록 실패:', err));
+            });
+        }
+
+        const SUPABASE_URL = 'https://whhmnutvzyqsnbffohqj.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndoaG1udXR2enlxc25iZmZvaHFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY4NTQ2OTYsImV4cCI6MjEwMjQzMDY5Nn0.yMVCwhuiJs_rtuf51zQty3yJfNXMHF2Oauy8y08_2Gc';
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        let currentDate = new Date(); 
+        let events = []; 
+        let lunarDisplayMode = localStorage.getItem('lunarDisplayMode') || '1_15'; 
+        let activeModalsStack = [];
+
+        const TRASH_STORAGE_KEY = 'deleted_events_trash';
+        const THREE_DAYS_MS = 3 * 24 * 60 * 60 * 1000;
+        
+        const colors = ['bg-blue-500', 'bg-red-500', 'bg-green-500', 'bg-yellow-500', 'bg-pink-500', 'bg-indigo-500'];
+        const recurrenceText = { 'daily': '매일', 'weekly': '매주', 'monthly': '매월', 'yearly': '매년 (양력)', 'yearly_lunar': '매년 (음력)' };
+
+        const solarHolidays = {
+            '01-01': '신정', '03-01': '3·1절', '05-05': '어린이날', '06-06': '현충일', 
+            '08-15': '광복절', '10-03': '개천절', '10-09': '한글날', '12-25': '성탄절'
+        };
+        const lunarHolidays = {
+            '01-01': '설날', '01-02': '설날 연휴', '04-08': '부처님오신날', 
+            '08-14': '추석 연휴', '08-15': '추석', '08-16': '추석 연휴'
+        };
+        const specificHolidays = {
+            '2026-03-02': '대체공휴일(3·1절)', '2026-05-25': '대체공휴일(부처님오신날)',
+            '2026-06-03': '전국동시지방선거', '2026-08-17': '대체공휴일(광복절)',
+            '2026-10-05': '대체공휴일(개천절)'
+        };
+
+        function parseLocalDate(str) {
+            if(!str) return new Date();
+            const dateOnly = String(str).split('T')[0].split(' ')[0];
+            const [y, m, d] = dateOnly.split('-').map(Number);
+            return new Date(y, m - 1, d);
+        }
+
+        function getTodayStr() {
+            const now = new Date();
+            const y = now.getFullYear();
+            const m = String(now.getMonth() + 1).padStart(2, '0');
+            const d = String(now.getDate()).padStart(2, '0');
+            return `${y}-${m}-${d}`;
+        }
+
+        /* --- History API 모달 뒤로가기 제어 --- */
+        function openModalUI(id) {
+            const modal = document.getElementById(id);
+            if (modal && modal.classList.contains('hidden')) {
+                modal.classList.remove('hidden');
+                activeModalsStack.push(id);
+                if (history.state && history.state.modalId) {
+                    history.replaceState({ modalId: id }, '');
+                } else {
+                    history.pushState({ modalId: id }, '');
+                }
+            }
+        }
+
+        function closeModal(id, fromPopState = false, skipHistoryBack = false) {
+            const modal = document.getElementById(id);
+            if (modal && !modal.classList.contains('hidden')) {
+                modal.classList.add('hidden');
+                activeModalsStack = activeModalsStack.filter(mId => mId !== id);
+                if (!fromPopState && !skipHistoryBack && history.state && history.state.modalId === id) {
+                    history.back();
+                }
+            }
+        }
+
+        window.addEventListener('popstate', (e) => {
+            const allModals = ['eventModal', 'yearModal', 'monthModal', 'dayViewModal', 'settingsModal', 'anniversaryModal'];
+            let topModal = activeModalsStack.pop();
+            if (topModal) {
+                closeModal(topModal, true);
+            } else {
+                allModals.forEach(id => closeModal(id, true));
+            }
+        });
+
+        /* --- 모바일 터치 스와이프 이벤트 --- */
+        let touchStartX = 0;
+        let touchStartY = 0;
+        let touchEndX = 0;
+        let touchEndY = 0;
+
+        function initSwipeEvents() {
+            const wrapper = document.getElementById('calendarWrapper');
+            if (!wrapper) return;
+
+            wrapper.addEventListener('touchstart', (e) => {
+                touchStartX = e.changedTouches[0].clientX;
+                touchStartY = e.changedTouches[0].clientY;
+            }, { passive: true });
+
+            wrapper.addEventListener('touchend', (e) => {
+                touchEndX = e.changedTouches[0].clientX;
+                touchEndY = e.changedTouches[0].clientY;
+                handleSwipe();
+            }, { passive: true });
+        }
+
+        function handleSwipe() {
+            if (activeModalsStack.length > 0) return;
+
+            const diffX = touchEndX - touchStartX;
+            const diffY = touchEndY - touchStartY;
+            const minSwipeDistance = 50;
+
+            if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > minSwipeDistance) {
+                if (diffX < 0) {
+                    changeMonth(1);
+                } else {
+                    changeMonth(-1);
+                }
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            initTheme(); renderColorPicker();
+            cleanExpiredTrash();
+            initSwipeEvents();
+            await fetchEvents();
+        });
+
+        window.addEventListener('resize', () => { drawCalendar(); });
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                const visibleModals = ['eventModal', 'yearModal', 'monthModal', 'dayViewModal', 'settingsModal', 'anniversaryModal'];
+                visibleModals.forEach(id => closeModal(id));
+            } else if (e.key === 'Enter') {
+                const eventModal = document.getElementById('eventModal');
+                if (eventModal && !eventModal.classList.contains('hidden')) {
+                    if (document.activeElement && document.activeElement.tagName === 'TEXTAREA') return;
+                    e.preventDefault();
+                    saveEvent();
+                }
+            }
+        });
+
+        function showLoading(show) { document.getElementById('loadingOverlay').classList.toggle('hidden', !show); }
+        function showToast(msg) {
+            const t = document.getElementById('toast');
+            t.innerText = msg; t.style.opacity = '1';
+            setTimeout(() => { t.style.opacity = '0'; }, 2500);
+        }
+
+        async function fetchEvents() {
+            showLoading(true);
+            try {
+                const { data, error } = await supabaseClient.from('Calendar').select('*');
+                if (error) throw error;
+                events = data || []; drawCalendar();
+            } catch (err) { showToast('일정을 불러오는 데 실패했습니다.'); }
+            finally { showLoading(false); }
+        }
+
+        async function saveEvent() {
+            const title = document.getElementById('eventTitle').value.trim();
+            const startDate = document.getElementById('eventStartDate').value;
+            const endDate = document.getElementById('eventEndDate').value;
+            const recurrence = document.getElementById('eventRecurrence').value;
+            let color = document.getElementById('eventColor').value;
+            const memo = document.getElementById('eventMemo').value;
+            const id = document.getElementById('eventId').value || Date.now().toString();
+
+            if (!title || !startDate || !endDate) return showToast('제목과 날짜를 모두 입력해주세요.');
+            if (parseLocalDate(startDate) > parseLocalDate(endDate)) return showToast('종료일은 시작일보다 이후여야 합니다.');
+            if (recurrence !== 'none') color = 'bg-purple-500';
+
+            const existing = events.find(e => e.id === id);
+            const eventObj = { 
+                id, title, startDate, endDate, recurrence, color, memo,
+                order: existing ? existing.order : null
+            };
+            const btns = document.querySelectorAll('.btn-save-event');
+            
+            try {
+                btns.forEach(btn => { btn.disabled = true; btn.innerText = '저장중...'; });
+                const { error } = await supabaseClient.from('Calendar').upsert(eventObj);
+                if (error) throw error;
+                
+                if (document.getElementById('eventId').value) { events = events.map(e => e.id === id ? eventObj : e); showToast('일정이 수정되었습니다.'); } 
+                else { events.push(eventObj); showToast('새 일정이 추가되었습니다.'); }
+
+                closeModal('eventModal'); drawCalendar();
+            } catch (err) { showToast('저장에 실패했습니다.'); }
+            finally { btns.forEach(btn => { btn.disabled = false; btn.innerText = '저장'; }); }
+        }
+
+        async function deleteEvent() {
+            const id = document.getElementById('eventId').value;
+            if(!confirm('정말 삭제하시겠습니까?')) return;
+
+            const targetEvent = events.find(e => e.id === id);
+            try {
+                const { error } = await supabaseClient.from('Calendar').delete().eq('id', id);
+                if (error) throw error;
+
+                if (targetEvent) {
+                    const trash = getTrashItems();
+                    trash.push({ ...targetEvent, deletedAt: Date.now() });
+                    saveTrashItems(trash);
+                }
+
+                events = events.filter(e => e.id !== id);
+                showToast('삭제되었습니다.'); closeModal('eventModal'); closeModal('dayViewModal'); drawCalendar();
+                renderSettingsTrashList();
+            } catch (err) { showToast('삭제에 실패했습니다.'); }
+        }
+
+        function getTrashItems() {
+            cleanExpiredTrash();
+            try { return JSON.parse(localStorage.getItem(TRASH_STORAGE_KEY)) || []; } 
+            catch(e) { return []; }
+        }
+        function saveTrashItems(items) { localStorage.setItem(TRASH_STORAGE_KEY, JSON.stringify(items)); }
+        function cleanExpiredTrash() {
+            try {
+                const raw = localStorage.getItem(TRASH_STORAGE_KEY);
+                if (!raw) return;
+                const items = JSON.parse(raw);
+                const now = Date.now();
+                const filtered = items.filter(item => (now - item.deletedAt) < THREE_DAYS_MS);
+                localStorage.setItem(TRASH_STORAGE_KEY, JSON.stringify(filtered));
+            } catch(e) {}
+        }
+
+        /* --- 화면 크기에 따른 동적 달력 계산 --- */
+        function drawCalendar() {
+            const y = currentDate.getFullYear();
+            const m = currentDate.getMonth();
+
+            document.getElementById('currentYearText').innerText = y;
+            document.getElementById('currentMonthText').innerText = m + 1;
+
+            const firstDay = new Date(y, m, 1).getDay();
+            const lastDate = new Date(y, m + 1, 0).getDate();
+            const prevLastDate = new Date(y, m, 0).getDate();
+            const totalCells = Math.ceil((firstDay + lastDate) / 7) * 7;
+            const weekCount = totalCells / 7;
+            
+            const gridEl = document.getElementById('calendarGrid');
+            const gridHeight = gridEl.clientHeight || (window.innerHeight - 140);
+            const weekRowHeight = gridHeight / weekCount;
+            
+            const isMobile = window.innerWidth <= 640;
+            const EVENT_HEIGHT = isMobile ? 18 : 20;
+            const DATE_HEADER_HEIGHT = isMobile ? 26 : 30;
+            const MORE_BTN_SPACE = 18;
+
+            const availableHeight = weekRowHeight - DATE_HEADER_HEIGHT - MORE_BTN_SPACE;
+            const MAX_SLOTS = Math.max(1, Math.floor(availableHeight / EVENT_HEIGHT));
+
+            let calendarDates = [];
+            for (let i = 0; i < totalCells; i++) {
+                let cellY = y, cellM = m, cellD;
+                let isCurrentMonth = true;
+
+                if (i < firstDay) { cellD = prevLastDate - firstDay + i + 1; cellM = m - 1; isCurrentMonth = false; } 
+                else if (i >= firstDay + lastDate) { cellD = i - firstDay - lastDate + 1; cellM = m + 1; isCurrentMonth = false; } 
+                else { cellD = i - firstDay + 1; }
+                
+                if (cellM < 0) { cellM = 11; cellY--; } if (cellM > 11) { cellM = 0; cellY++; }
+
+                calendarDates.push({
+                    y: cellY, m: cellM, d: cellD,
+                    dateObj: new Date(cellY, cellM, cellD),
+                    dateStr: `${cellY}-${String(cellM+1).padStart(2,'0')}-${String(cellD).padStart(2,'0')}`,
+                    isCurrentMonth: isCurrentMonth,
+                    isSunday: (i % 7) === 0, isSaturday: (i % 7) === 6
+                });
+            }
+
+            let html = '';
+            for(let w = 0; w < calendarDates.length; w += 7) {
+                const week = calendarDates.slice(w, w + 7);
+                let weekEventsMap = week.map(d => getEventsForDate(d.dateObj));
+                
+                let spans = [];
+                let processedIds = new Set();
+
+                for (let day = 0; day < 7; day++) {
+                    weekEventsMap[day].forEach(evt => {
+                        let id = evt.id;
+                        let isMulti = (evt.recurrence === 'none' && evt.startDate !== evt.endDate);
+
+                        if (!isMulti) {
+                            spans.push({ evt, startDay: day, endDay: day, isStart: true, isEnd: true });
+                        } else {
+                            if (!processedIds.has(id)) {
+                                processedIds.add(id);
+                                let endDay = day;
+                                while (endDay < 6 && weekEventsMap[endDay + 1].some(e => e.id === id)) endDay++;
+                                
+                                const sTime = parseLocalDate(evt.startDate).getTime();
+                                const eTime = parseLocalDate(evt.endDate).getTime();
+                                const isStart = (week[day].dateObj.getTime() === sTime);
+                                const isEnd = (week[endDay].dateObj.getTime() === eTime);
+                                spans.push({ evt, startDay: day, endDay: endDay, isStart, isEnd });
+                            }
+                        }
+                    });
+                }
+
+                spans.sort((a, b) => {
+                    const orderA = (a.evt.order !== undefined && a.evt.order !== null) ? a.evt.order : 999999;
+                    const orderB = (b.evt.order !== undefined && b.evt.order !== null) ? b.evt.order : 999999;
+                    if (orderA !== orderB) return orderA - orderB;
+
+                    let durA = a.endDay - a.startDay; let durB = b.endDay - b.startDay;
+                    if (durB !== durA) return durB - durA; 
+                    if (a.startDay !== b.startDay) return a.startDay - b.startDay; 
+                    return a.evt.title.localeCompare(b.evt.title);
+                });
+
+                let slots = [];
+                spans.forEach(span => {
+                    let slotIndex = 0;
+                    while (true) {
+                        if (!slots[slotIndex]) slots[slotIndex] = Array(7).fill(false);
+                        let fits = true;
+                        for (let i = span.startDay; i <= span.endDay; i++) { if (slots[slotIndex][i]) { fits = false; break; } }
+                        if (fits) {
+                            for (let i = span.startDay; i <= span.endDay; i++) slots[slotIndex][i] = true;
+                            span.slot = slotIndex;
+                            break;
+                        }
+                        slotIndex++;
+                    }
+                });
+
+                let hiddenCounts = Array(7).fill(0);
+                let eventsHtml = '';
+
+                spans.forEach(span => {
+                    if (span.slot >= MAX_SLOTS) {
+                        for(let i=span.startDay; i<=span.endDay; i++) hiddenCounts[i]++;
+                    } else {
+                        let leftPercent = (span.startDay * 100) / 7;
+                        let widthPercent = ((span.endDay - span.startDay + 1) * 100) / 7;
+                        let top = `${span.slot * EVENT_HEIGHT}px`;
+
+                        let ml = span.isStart ? 2 : 0; let mr = span.isEnd ? 2 : 0;
+                        let classes = `${span.evt.color}`;
+                        if(!span.isStart) classes += ' clip-start';
+                        if(!span.isEnd) classes += ' clip-end';
+
+                        eventsHtml += `
+                            <div class="event-block ${classes}"
+                                 style="top: ${top}; left: calc(${leftPercent}% + ${ml}px); width: calc(${widthPercent}% - ${ml + mr}px);"
+                                 draggable="true" ondragstart="dragStart(event, '${span.evt.id}')"
+                                 onclick="event.stopPropagation(); openEventModal('${span.evt.id}')"
+                                 title="${span.evt.title}">
+                                ${span.evt.title} ${span.evt.recurrence !== 'none' ? '🔄' : ''}
+                            </div>
+                        `;
+                    }
+                });
+
+                html += `
+                    <div class="week-row">
+                        <div class="bg-grid">
+                            ${week.map((d, idx) => `
+                                <div class="bg-cell ${!d.isCurrentMonth ? 'out-month' : ''}"
+                                     onclick="openEventModal(null, '${d.dateStr}')"
+                                     ondragover="event.preventDefault()"
+                                     ondrop="drop(event, '${d.dateStr}')">
+                                    ${hiddenCounts[idx] > 0 ? `<div class="more-indicator" onclick="event.stopPropagation(); openDayView('${d.dateStr}')">+${hiddenCounts[idx]}</div>` : ''}
+                                </div>
+                            `).join('')}
+                        </div>
+                        
+                        <div class="date-header-grid">
+                            ${week.map(d => {
+                                let hName = getHolidayName(d.y, d.m + 1, d.d);
+                                let isToday = new Date().toDateString() === d.dateObj.toDateString();
+                                let nCls = isToday ? 'today' : (!d.isCurrentMonth ? 'muted' : (d.isSunday || hName ? 'text-sun' : (d.isSaturday ? 'text-sat' : '')));
+                                
+                                let lunarTxt = '';
+                                if (lunarDisplayMode !== 'NONE') {
+                                    const lunar = Solar.fromYmd(d.y, d.m + 1, d.d).getLunar();
+                                    if (lunarDisplayMode === 'ALL' || (lunarDisplayMode === '1_15' && (lunar.getDay() === 1 || lunar.getDay() === 15))) lunarTxt = `${lunar.getMonth()}.${lunar.getDay()}`;
+                                }
+                                
+                                return `
+                                    <div class="date-cell-info">
+                                        <div class="date-top-row">
+                                            <span class="date-num ${nCls}">${d.d}</span>${lunarTxt ? `<span class="date-lunar">${lunarTxt}</span>` : ''}
+                                        </div>
+                                        ${hName ? `<span class="date-holiday" title="${hName}">${hName}</span>` : ''}
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+
+                        <div class="event-layer">
+                            ${eventsHtml}
+                        </div>
+                    </div>
+                `;
+            }
+            document.getElementById('calendarGrid').innerHTML = html;
+        }
+
+        /* --- Drag and Drop (달력 타일 간 이동) --- */
+        function dragStart(e, id) { e.dataTransfer.setData('text/plain', id); e.target.style.opacity = '0.5'; }
+        document.addEventListener('dragend', e => { if(e.target.classList && e.target.classList.contains('event-block')) e.target.style.opacity = '1'; });
+        
+        async function drop(e, dateStr) {
+            e.preventDefault();
+            const id = e.dataTransfer.getData('text/plain'); if (!id) return;
+            const event = events.find(ev => ev.id === id);
+            if (event) {
+                if (event.recurrence !== 'none') return showToast('반복 일정은 이동할 수 없습니다.');
+                let start = parseLocalDate(event.startDate).getTime();
+                let end = parseLocalDate(event.endDate).getTime();
+                let dur = Math.round((end - start) / 86400000);
+                
+                const newStart = parseLocalDate(dateStr);
+                const newEnd = new Date(newStart.getTime() + dur * 86400000);
+                
+                const updatedObj = { 
+                    ...event, 
+                    startDate: dateStr, 
+                    endDate: `${newEnd.getFullYear()}-${String(newEnd.getMonth()+1).padStart(2,'0')}-${String(newEnd.getDate()).padStart(2,'0')}` 
+                };
+                
+                try {
+                    showLoading(true);
+                    const { error } = await supabaseClient.from('Calendar').update(updatedObj).eq('id', id);
+                    if (error) throw error;
+                    event.startDate = updatedObj.startDate; event.endDate = updatedObj.endDate;
+                    drawCalendar();
+                } catch (err) { showToast('이동 실패'); } finally { showLoading(false); }
+            }
+        }
+
+        /* --- Day View (더보기 모달) 및 드래그 순서 변경 DB 연동 --- */
+        function editEventFromDayView(id) {
+            closeModal('dayViewModal', false, true);
+            openEventModal(id);
+        }
+
+        let draggedListIndex = null;
+        let touchDraggedEl = null;
+
+        function openDayView(dateStr) {
+            const [y, m, d] = dateStr.split('-');
+            document.getElementById('dayViewTitle').innerText = `${y}년 ${parseInt(m)}월 ${parseInt(d)}일 일정`;
+            
+            const targetDate = parseLocalDate(dateStr);
+            const dayEvents = getEventsForDate(targetDate);
+            const ul = document.getElementById('dayViewList');
+            
+            if (dayEvents.length === 0) {
+                ul.innerHTML = '<li style="text-align:center; padding:1rem; color:var(--text-muted);">일정이 없습니다.</li>';
+            } else {
+                ul.innerHTML = dayEvents.map((evt, idx) => `
+                    <li class="day-event-item" 
+                        draggable="true" 
+                        data-id="${evt.id}" 
+                        data-index="${idx}"
+                        ondragstart="handleListDragStart(event, ${idx})" 
+                        ondragover="handleListDragOver(event)" 
+                        ondragleave="handleListDragLeave(event)"
+                        ondrop="handleListDrop(event, ${idx})"
+                        ondragend="handleListDragEnd(event)"
+                        ontouchstart="handleListTouchStart(event)"
+                        ontouchmove="handleListTouchMove(event)"
+                        ontouchend="handleListTouchEnd(event)"
+                        style="justify-content: space-between; cursor: grab; user-select: none;" 
+                        onclick="editEventFromDayView('${evt.id}')">
+                        <div style="display:flex; align-items:center; gap:0.6rem; overflow:hidden; flex:1;">
+                            <i class="fa-solid fa-grip-lines" style="color:var(--text-muted); font-size:0.85rem; cursor:grab; flex-shrink:0;"></i>
+                            <div class="day-event-color ${evt.color}"></div>
+                            <div class="day-event-title">${evt.title}</div>
+                        </div>
+                        <button class="btn-icon" title="수정" style="padding:0.35rem; font-size:0.85rem; flex-shrink:0;" onclick="event.stopPropagation(); editEventFromDayView('${evt.id}')">
+                            <i class="fa-solid fa-pen"></i>
+                        </button>
+                    </li>
+                `).join('');
+            }
+            openModalUI('dayViewModal');
+        }
+
+        function handleListDragStart(e, index) {
+            draggedListIndex = index;
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', index);
+            e.currentTarget.style.opacity = '0.5';
+        }
+
+        function handleListDragOver(e) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            const target = e.currentTarget;
+            if (target && target.classList.contains('day-event-item')) {
+                target.style.borderColor = 'var(--primary)';
+            }
+        }
+
+        function handleListDragLeave(e) {
+            e.currentTarget.style.borderColor = 'var(--border-color)';
+        }
+
+        async function handleListDrop(e, dropIndex) {
+            e.preventDefault();
+            e.stopPropagation();
+            e.currentTarget.style.borderColor = 'var(--border-color)';
+            if (draggedListIndex === null || draggedListIndex === dropIndex) return;
+
+            const ul = document.getElementById('dayViewList');
+            const items = Array.from(ul.children);
+            const draggedItem = items[draggedListIndex];
+            const targetItem = items[dropIndex];
+
+            if (draggedListIndex < dropIndex) {
+                targetItem.after(draggedItem);
+            } else {
+                targetItem.before(draggedItem);
+            }
+            await reindexListItems();
+        }
+
+        function handleListDragEnd(e) {
+            e.currentTarget.style.opacity = '1';
+            draggedListIndex = null;
+            document.querySelectorAll('#dayViewList .day-event-item').forEach(el => el.style.borderColor = 'var(--border-color)');
+        }
+
+        function handleListTouchStart(e) {
+            touchDraggedEl = e.currentTarget;
+            touchDraggedEl.style.opacity = '0.6';
+        }
+
+        function handleListTouchMove(e) {
+            if (!touchDraggedEl) return;
+            e.preventDefault();
+            const touch = e.touches[0];
+            const targetEl = document.elementFromPoint(touch.clientX, touch.clientY);
+            if (!targetEl) return;
+
+            const item = targetEl.closest('.day-event-item');
+            const ul = document.getElementById('dayViewList');
+            if (item && item !== touchDraggedEl && item.parentNode === ul) {
+                const rect = item.getBoundingClientRect();
+                const next = (touch.clientY - rect.top) / (rect.bottom - rect.top) > 0.5;
+                ul.insertBefore(touchDraggedEl, next ? item.nextSibling : item);
+            }
+        }
+
+        async function handleListTouchEnd(e) {
+            if (touchDraggedEl) {
+                touchDraggedEl.style.opacity = '1';
+                touchDraggedEl = null;
+                await reindexListItems();
+            }
+        }
+
+        /* 변경된 order 값을 로컬 및 Supabase DB에 동시에 저장 */
+        async function applyListOrder() {
+            const ul = document.getElementById('dayViewList');
+            if (!ul) return;
+            
+            const items = Array.from(ul.children);
+            const updates = [];
+
+            items.forEach((item, index) => {
+                const id = item.getAttribute('data-id');
+                const evt = events.find(e => e.id === id);
+                if (evt) {
+                    if (evt.order !== index) {
+                        evt.order = index;
+                        updates.push({
+                            id: evt.id,
+                            title: evt.title,
+                            startDate: evt.startDate,
+                            endDate: evt.endDate,
+                            recurrence: evt.recurrence,
+                            color: evt.color,
+                            memo: evt.memo,
+                            order: index
+                        });
+                    }
+                }
+            });
+
+            if (updates.length > 0) {
+                try {
+                    const { error } = await supabaseClient.from('Calendar').upsert(updates);
+                    if (error) throw error;
+                } catch (err) {
+                    console.error('순서 저장 실패:', err);
+                    showToast('순서 저장 실패');
+                }
+            }
+        }
+
+        async function closeDayViewModal() {
+            await applyListOrder();
+            drawCalendar();
+            closeModal('dayViewModal');
+        }
+
+        async function reindexListItems() {
+            const ul = document.getElementById('dayViewList');
+            const items = Array.from(ul.children);
+            items.forEach((item, idx) => {
+                item.setAttribute('data-index', idx);
+                item.setAttribute('ondragstart', `handleListDragStart(event, ${idx})`);
+                item.setAttribute('ondrop', `handleListDrop(event, ${idx})`);
+            });
+            await applyListOrder();
+        }
+
+        function getEventsForDate(dateObj) {
+            const targetTime = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate()).getTime();
+            const filtered = events.filter(evt => {
+                const sDate = parseLocalDate(evt.startDate);
+                const eDate = parseLocalDate(evt.endDate);
+                const sTime = sDate.getTime();
+                
+                if (targetTime < sTime) return false;
+                switch(evt.recurrence) {
+                    case 'none': return targetTime >= sTime && targetTime <= eDate.getTime();
+                    case 'daily': return true;
+                    case 'weekly': return dateObj.getDay() === sDate.getDay();
+                    case 'monthly': return dateObj.getDate() === sDate.getDate();
+                    case 'yearly': return dateObj.getMonth() === sDate.getMonth() && dateObj.getDate() === sDate.getDate();
+                    case 'yearly_lunar':
+                        const oLunar = Solar.fromYmd(sDate.getFullYear(), sDate.getMonth() + 1, sDate.getDate()).getLunar();
+                        const tLunar = Solar.fromYmd(dateObj.getFullYear(), dateObj.getMonth() + 1, dateObj.getDate()).getLunar();
+                        return oLunar.getMonth() === tLunar.getMonth() && oLunar.getDay() === tLunar.getDay();
+                    default: return false;
+                }
+            });
+
+            return filtered.sort((a, b) => {
+                const orderA = (a.order !== undefined && a.order !== null) ? a.order : 999999;
+                const orderB = (b.order !== undefined && b.order !== null) ? b.order : 999999;
+                if (orderA !== orderB) return orderA - orderB;
+
+                const durA = Math.round((parseLocalDate(a.endDate) - parseLocalDate(a.startDate)) / 86400000) + 1;
+                const durB = Math.round((parseLocalDate(b.endDate) - parseLocalDate(b.startDate)) / 86400000) + 1;
+                if (durB !== durA) return durB - durA;
+
+                const startA = parseLocalDate(a.startDate).getTime();
+                const startB = parseLocalDate(b.startDate).getTime();
+                if (startA !== startB) return startA - startB;
+
+                return a.title.localeCompare(b.title);
+            });
+        }
+
+        function getHolidayName(y, m, d) {
+            const sm = String(m).padStart(2, '0'); const sd = String(d).padStart(2, '0');
+            const solarKey = `${sm}-${sd}`; const fullKey = `${y}-${sm}-${sd}`;
+            if (specificHolidays[fullKey]) return specificHolidays[fullKey];
+            if (solarHolidays[solarKey]) return solarHolidays[solarKey];
+
+            const solar = Solar.fromYmd(y, m, d); const lunar = solar.getLunar();
+            const lunarKey = `${String(lunar.getMonth()).padStart(2, '0')}-${String(lunar.getDay()).padStart(2, '0')}`;
+            if (lunarHolidays[lunarKey]) return lunarHolidays[lunarKey];
+            const tomorrow = solar.next(1).getLunar();
+            if (tomorrow.getMonth() === 1 && tomorrow.getDay() === 1) return '설날 연휴';
+            return null;
+        }
+
+        function changeMonth(delta) { currentDate.setMonth(currentDate.getMonth() + delta); drawCalendar(); }
+        function goToToday() { currentDate = new Date(); drawCalendar(); }
+
+        /* --- Modals & UI Actions --- */
+        function openYearModal() {
+            let html = ''; const base = new Date().getFullYear(); const currentY = currentDate.getFullYear();
+            for (let i = base - 50; i <= base + 50; i++) {
+                let style = i === currentY ? 'background:var(--primary); color:#fff;' : 'background:var(--bg-surface);';
+                html += `<button onclick="currentDate.setFullYear(${i}); drawCalendar(); closeModal('yearModal');" style="${style} padding:0.5rem; border:1px solid var(--border-color); border-radius:4px; cursor:pointer;">${i}</button>`;
+            }
+            document.getElementById('modalYearListOnly').innerHTML = html; 
+            openModalUI('yearModal');
+        }
+        
+        function openMonthModal() {
+            let html = ''; const currM = currentDate.getMonth();
+            for (let i = 0; i < 12; i++) {
+                let style = i === currM ? 'background:var(--primary); color:#fff;' : 'background:var(--bg-panel);';
+                html += `<button onclick="currentDate.setMonth(${i}); drawCalendar(); closeModal('monthModal');" style="${style} padding:0.75rem; border:1px solid var(--border-color); border-radius:4px; cursor:pointer;">${i + 1}월</button>`;
+            }
+            document.getElementById('modalMonthListOnly').innerHTML = html; 
+            openModalUI('monthModal');
+        }
+
+        function openEventModal(id = null, selectedDate = null) {
+            const modalTitle = document.getElementById('eventModalTitle');
+            if (id) {
+                const evt = events.find(e => e.id === id); if(!evt) return;
+                modalTitle.innerText = '일정 수정'; modalTitle.style.color = '#2563eb';
+                document.getElementById('eventId').value = evt.id; document.getElementById('eventTitle').value = evt.title;
+                document.getElementById('eventStartDate').value = evt.startDate; document.getElementById('eventEndDate').value = evt.endDate;
+                document.getElementById('eventRecurrence').value = evt.recurrence; document.getElementById('eventMemo').value = evt.memo || '';
+                selectColor(evt.recurrence !== 'none' ? 'bg-purple-500' : evt.color);
+                document.getElementById('deleteEventBtn').classList.remove('hidden');
+            } else {
+                modalTitle.innerText = '일정 추가'; modalTitle.style.color = '#111827';
+                document.getElementById('eventId').value = ''; document.getElementById('eventTitle').value = '';
+                const dateStr = selectedDate || getTodayStr();
+                document.getElementById('eventStartDate').value = dateStr; document.getElementById('eventEndDate').value = dateStr;
+                document.getElementById('eventRecurrence').value = 'none'; document.getElementById('eventMemo').value = '';
+                selectColor('bg-blue-500'); document.getElementById('deleteEventBtn').classList.add('hidden');
+            }
+            openModalUI('eventModal');
+
+            setTimeout(() => {
+                const titleInput = document.getElementById('eventTitle');
+                if (titleInput) { titleInput.focus(); titleInput.select(); }
+            }, 50);
+        }
+
+        function renderColorPicker() {
+            document.getElementById('colorPicker').innerHTML = colors.map(c => `<div onclick="selectColor('${c}')" class="color-circle ${c}" id="color-${c}"></div>`).join('');
+        }
+        function selectColor(color) {
+            document.getElementById('eventColor').value = color;
+            colors.forEach(c => {
+                const el = document.getElementById(`color-${c}`);
+                if(el) { if(c === color) el.classList.add('active'); else el.classList.remove('active'); }
+            });
+        }
+
+        function openSettingsModal() {
+            document.querySelector(`input[name="lunarSetting"][value="${lunarDisplayMode}"]`).checked = true;
+            document.querySelector(`input[name="themeSetting"][value="${localStorage.getItem('theme') || 'light'}"]`).checked = true;
+            renderSettingsTrashList();
+            openModalUI('settingsModal');
+        }
+        function saveSettings() {
+            lunarDisplayMode = document.querySelector('input[name="lunarSetting"]:checked').value;
+            localStorage.setItem('lunarDisplayMode', lunarDisplayMode);
+            const theme = document.querySelector('input[name="themeSetting"]:checked').value;
+            localStorage.setItem('theme', theme);
+            if(theme === 'dark') document.documentElement.classList.add('dark'); else document.documentElement.classList.remove('dark');
+            closeModal('settingsModal'); drawCalendar();
+        }
+        function initTheme() {
+            const theme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            if (theme === 'dark') document.documentElement.classList.add('dark');
+        }
+
+        function openAnniversaryModal() {
+            closeModal('settingsModal', false, true);
+            const list = document.getElementById('anniversaryList');
+            const rEvents = events.filter(e => e.recurrence !== 'none');
+            if (rEvents.length === 0) list.innerHTML = '<li style="text-align:center; padding:1rem; color:var(--text-muted);">반복 일정이 없습니다.</li>';
+            else list.innerHTML = rEvents.map(e => `
+                <li class="day-event-item" style="justify-content:space-between;" onclick="closeModal('anniversaryModal', false, true); openEventModal('${e.id}')">
+                    <div style="display:flex; align-items:center; gap:0.5rem;"><div class="day-event-color ${e.color}"></div><div>${e.title}</div></div>
+                    <div style="font-size:0.75rem; color:var(--text-muted);">${recurrenceText[e.recurrence]}</div>
+                </li>
+            `).join('');
+            openModalUI('anniversaryModal');
+        }
+
+        function renderSettingsTrashList() {
+            const list = getTrashItems();
+            const ul = document.getElementById('settingsTrashList');
+            if (!ul) return;
+            
+            if (list.length === 0) {
+                ul.innerHTML = '<li style="text-align:center; padding:0.75rem; color:var(--text-muted); font-size:0.8rem;">삭제된 일정이 없습니다.</li>';
+            } else {
+                ul.innerHTML = list.map(item => {
+                    const remainingHours = Math.max(0, Math.ceil((THREE_DAYS_MS - (Date.now() - item.deletedAt)) / (1000 * 60 * 60)));
+                    return `
+                        <li class="day-event-item" style="justify-content:space-between; padding:0.5rem 0.65rem;">
+                            <div style="display:flex; align-items:center; gap:0.5rem; overflow:hidden;">
+                                <div class="day-event-color ${item.color}"></div>
+                                <div style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                                    <div style="font-weight:bold; font-size:0.8rem;">${item.title}</div>
+                                    <div style="font-size:0.7rem; color:var(--text-muted);">${item.startDate} ~ ${item.endDate} (${remainingHours}시간 남음)</div>
+                                </div>
+                            </div>
+                            <button onclick="restoreEvent('${item.id}')" class="btn-primary" style="padding:0.25rem 0.5rem; font-size:0.75rem; flex-shrink:0;">복원</button>
+                        </li>
+                    `;
+                }).join('');
+            }
+        }
+
+        async function restoreEvent(id) {
+            const trash = getTrashItems();
+            const item = trash.find(e => e.id === id);
+            if (!item) return;
+
+            const { deletedAt, ...eventObj } = item;
+            showLoading(true);
+            try {
+                const { error } = await supabaseClient.from('Calendar').upsert(eventObj);
+                if (error) throw error;
+
+                events.push(eventObj);
+                const newTrash = trash.filter(e => e.id !== id);
+                saveTrashItems(newTrash);
+
+                showToast('일정이 복원되었습니다.');
+                renderSettingsTrashList();
+                drawCalendar();
+            } catch (err) {
+                showToast('복원에 실패했습니다.');
+            } finally {
+                showLoading(false);
+            }
+        }
+    </script>
+</body>
+</html>
