@@ -9,13 +9,13 @@
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#2563eb">
     
-    <!-- iOS 모바일 웹앱 (주소창 숨기기 및 전체화면) 설정 -->
+    <!-- iOS 모바일 웹앱 설정 -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="캘린더">
     <meta name="mobile-web-app-capable" content="yes">
 
-    <!-- 아이콘 및 파비콘 경로 수정 (루트 경로의 icon.png 연결) -->
+    <!-- 아이콘 및 파비콘 경로 -->
     <link rel="icon" type="image/png" href="icon.png">
     <link rel="apple-touch-icon" href="icon.png">
 
@@ -74,6 +74,18 @@
         .bg-indigo-500 { background-color: #6366f1 !important; color: #fff !important; }
         .bg-purple-500 { background-color: #a855f7 !important; color: #fff !important; }
 
+        /* PC (기본): Font Size 1.5배 조정 */
+        html {
+            font-size: 24px;
+        }
+
+        /* 모바일 (640px 이하): 기존 기본 Font Size(16px) 유지 */
+        @media (max-width: 640px) {
+            html {
+                font-size: 16px;
+            }
+        }
+
         /* 기본 초기화 */
         body {
             background-color: var(--bg-body);
@@ -88,14 +100,14 @@
         }
 
         .container {
-            max-width: 1152px; margin: 0 auto;
+            max-width: 1400px; margin: 0 auto;
             padding: 0.75rem 0.5rem; box-sizing: border-box;
             display: flex; flex-direction: column;
             height: 100%; width: 100%;
         }
 
         @media (max-width: 640px) {
-            .container { padding: 0.25rem 2px; }
+            .container { padding: 0.25rem 2px; max-width: 1152px; }
         }
 
         button, input, select, textarea {
@@ -252,13 +264,25 @@
             pointer-events: none;
         }
         
+        /* 
+           [수정] event-block 높이를 픽셀(px) 단위로 명확히 정하고 위/아래 간격을 1px 지정 
+        */
         .event-block {
-            position: absolute; height: 18px; border-radius: 4px;
-            font-size: 0.65rem; font-weight: 500; padding: 0 5px;
-            display: block; text-align: left; line-height: 18px;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.1); cursor: pointer;
+            position: absolute; 
+            height: 20px; 
+            line-height: 20px;
+            border-radius: 4px;
+            font-size: 13px; 
+            font-weight: 500; 
+            padding: 0 4px;
+            display: block; 
+            text-align: left;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1); 
+            cursor: pointer;
             pointer-events: auto;
-            overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+            overflow: hidden; 
+            white-space: nowrap; 
+            text-overflow: clip;
             box-sizing: border-box;
         }
         .event-block:hover { filter: brightness(0.95); }
@@ -268,7 +292,12 @@
         .event-block.clip-end { border-top-right-radius: 0; border-bottom-right-radius: 0; }
 
         @media (max-width: 640px) {
-            .event-block { height: 16px; line-height: 16px; font-size: 0.6rem; padding: 0 3px; }
+            .event-block { 
+                height: 18px; 
+                line-height: 18px; 
+                font-size: 11px; 
+                padding: 0 3px; 
+            }
         }
 
         /* 모달 공통 */
@@ -279,7 +308,7 @@
         }
         .modal-content {
             background-color: var(--bg-surface); border-radius: var(--radius-lg);
-            width: 100%; max-width: 400px; padding: 1.25rem; box-shadow: var(--shadow-lg);
+            width: 100%; max-width: 25rem; padding: 1.25rem; box-shadow: var(--shadow-lg);
             max-height: 85vh; overflow-y: auto; box-sizing: border-box;
         }
         .modal-header-flex {
@@ -777,7 +806,9 @@
             const weekRowHeight = gridHeight / weekCount;
             
             const isMobile = window.innerWidth <= 640;
-            const EVENT_HEIGHT = isMobile ? 18 : 20;
+            // [수정] 일정 높이(20px/18px) + 상하 1px씩 총 2px의 간격 반영
+            const BLOCK_HEIGHT = isMobile ? 18 : 20;
+            const EVENT_HEIGHT = BLOCK_HEIGHT + 2; 
             const DATE_HEADER_HEIGHT = isMobile ? 26 : 30;
             const MORE_BTN_SPACE = 18;
 
@@ -871,7 +902,9 @@
                     } else {
                         let leftPercent = (span.startDay * 100) / 7;
                         let widthPercent = ((span.endDay - span.startDay + 1) * 100) / 7;
-                        let top = `${span.slot * EVENT_HEIGHT}px`;
+                        
+                        // [수정] 상단 오프셋 1px을 추가하여 위/아래 1px 여백 확보
+                        let top = `${span.slot * EVENT_HEIGHT + 1}px`;
 
                         let ml = span.isStart ? 2 : 0; let mr = span.isEnd ? 2 : 0;
                         let classes = `${span.evt.color}`;
