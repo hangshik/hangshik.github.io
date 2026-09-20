@@ -710,9 +710,6 @@
 
             const hols = {};
 
-            // type:
-            // national = 국경일, lunar3 = 설날/추석, buddha, labor, children, christmas,
-            // jan1 = 신정, memorial = 현충일, election = 선거일
             const add = (y, m, d, name, type, substituteEligible, options = {}) => {
                 const date = new Date(y, m - 1, d);
                 const k = formatDateToStr(date);
@@ -735,14 +732,12 @@
             // 1. 양력 공휴일
             add(year, 1, 1, '신정', 'jan1', false);
 
-            // 국경일: 현행법상 제헌절도 공휴일(2026.5.11 시행)
             add(year, 3, 1, '3·1절', 'national', true);
             add(year, 7, 17, '제헌절', 'national', currentLaw);
             add(year, 8, 15, '광복절', 'national', true);
             add(year, 10, 3, '개천절', 'national', true);
             add(year, 10, 9, '한글날', 'national', true);
 
-            // 2026.5.1부터 노동절은 관공서 공휴일
             if (currentLaw) {
                 add(year, 5, 1, '노동절', 'labor', true);
             }
@@ -751,11 +746,9 @@
             add(year, 6, 6, '현충일', 'memorial', false);
             add(year, 12, 25, '성탄절', 'christmas', year >= 2023);
 
-            // 2026 전국동시지방선거
             if (year === 2026) {
                 add(2026, 6, 3, '전국동시지방선거', 'election', false, { overlapEligible: false });
             }
-            // 향후 선거일은 법정 선거일이 공식 확정된 경우에만 별도 추가
 
             // 2. 음력 공휴일
             try {
@@ -764,7 +757,6 @@
                     addDate(buddha, '부처님오신날', 'buddha', year >= 2023);
                 }
 
-                // 설날: 음력 1월 1일 전날·당일·다음날
                 const seollal = getSolarFromLunar(year, 1, 1, false);
                 if (seollal) {
                     const sD = new Date(seollal);
@@ -775,7 +767,6 @@
                     addDate(sNext, '설날 연휴', 'lunar3', year >= 2014);
                 }
 
-                // 추석: 음력 8월 15일 전날·당일·다음날
                 const chuseok = getSolarFromLunar(year, 8, 15, false);
                 if (chuseok) {
                     const cD = new Date(chuseok);
@@ -791,22 +782,13 @@
 
             // 3. 대체공휴일 계산
             const finalHolidays = {};
-
             const getItems = (date) => hols[formatDateToStr(date)] || [];
 
-            // 일요일도 공휴일이므로 '첫 번째 비공휴일'을 찾을 때 제외
-            const isBasePublicHoliday = (date) => {
-                const items = getItems(date);
-                return date.getDay() === 0 || items.length > 0;
-            };
-
-            // 대체공휴일이 이미 배정된 날짜도 공휴일로 간주
             const isPublicHoliday = (date) => {
                 if (date.getDay() === 0) return true;
                 return getItems(date).length > 0;
             };
 
-            // 다른 공휴일과 겹치는지 검사할 때 선거일은 제외
             const hasOtherPublicHoliday = (date, currentItem) => {
                 const items = getItems(date);
                 return items.some(item => {
@@ -819,23 +801,16 @@
 
             const shouldSubstitute = (date, item) => {
                 if (!item.substituteEligible) return false;
-
                 const dow = date.getDay();
 
-                // 설날/추석은 일요일 겹침만으로 대체공휴일 발생
                 if (item.type === 'lunar3') {
                     if (dow === 0) return true;
-                    // 평일에 다른 공휴일과 겹침
                     if (dow !== 0 && dow !== 6 && hasOtherPublicHoliday(date, item)) return true;
                     return false;
                 }
 
-                // 그 밖의 대체공휴일 대상은 토/일 겹침
                 if (dow === 0 || dow === 6) return true;
-
-                // 평일에 다른 공휴일과 겹침
                 if (hasOtherPublicHoliday(date, item)) return true;
-
                 return false;
             };
 
@@ -843,13 +818,11 @@
                 let candidate = new Date(sourceDate);
                 let guard = 0;
 
-                // '그 공휴일 다음의 첫 번째 비공휴일'
                 while (guard++ < 370) {
                     candidate.setDate(candidate.getDate() + 1);
                     if (!isPublicHoliday(candidate)) break;
                 }
 
-                // 대체공휴일이 토요일이면 그 다음 첫 비공휴일로 이동
                 if (candidate.getDay() === 6) {
                     do {
                         candidate.setDate(candidate.getDate() + 1);
@@ -873,7 +846,6 @@
                     : substituteName;
             };
 
-            // 원래 공휴일만 먼저 계산하고, 생성된 대체공휴일은 다시 대체하지 않음
             const baseDates = Object.keys(hols)
                 .sort()
                 .map(k => {
@@ -886,18 +858,14 @@
                 const dayItems = (hols[key] || []).filter(item => !item.isSubstitute);
                 if (dayItems.length === 0) continue;
 
-                // 같은 날 여러 공휴일이 겹치는 경우, 대체 대상 항목만 판단
                 const eligibleItems = dayItems.filter(item => item.substituteEligible);
                 for (const item of eligibleItems) {
                     if (shouldSubstitute(date, item, dayItems)) {
-                        // 같은 공휴일 묶음에서 여러 항목이 동시에 대체공휴일을 생성하면
-                        // 법령상 대체공휴일 중복은 다음 비공휴일로 순차 이동
                         addSubstitute(date, item.name);
                     }
                 }
             }
 
-            // 모든 원래 공휴일을 최종 결과에 반영
             Object.keys(hols).sort().forEach(k => {
                 if (!finalHolidays[k]) {
                     const names = [...new Set(hols[k].map(item => item.name))];
@@ -915,7 +883,6 @@
             return finalHolidays;
         }
 
-        // 해당 날짜의 공휴일 문자열 반환
         function getHolidayName(y, m, d) {
             const years = [y];
             if (m === 1) years.push(y - 1);
@@ -947,7 +914,6 @@
             return formatDateToStr(new Date());
         }
 
-        // 한국 음력 변환기: KARI(한국천문연구원) 기준 데이터 사용
         const koreanLunarCalendar = new KoreanLunarCalendar();
 
         function getLunarInfo(dateObj) {
@@ -972,7 +938,6 @@
             return new Date(solar.year, solar.month - 1, solar.day);
         }
 
-        /* --- 시작일 변경 핸들러 --- */
         function handleStartDateChange() {
             const startInput = document.getElementById('eventStartDate');
             const endInput = document.getElementById('eventEndDate');
@@ -1002,7 +967,6 @@
             updateLunarDisplay();
         }
 
-        /* --- History API 모달 뒤로가기 제어 --- */
         function openModalUI(id) {
             const modal = document.getElementById(id);
             if (modal && modal.classList.contains('hidden')) {
@@ -1043,7 +1007,7 @@
         let touchEndX = 0;
         let touchEndY = 0;
 
-function initSwipeEvents() {
+        function initSwipeEvents() {
             const wrapper = document.getElementById('calendarWrapper');
             if (!wrapper) return;
 
@@ -1065,29 +1029,16 @@ function initSwipeEvents() {
             if (!wrapper) return;
 
             wrapper.addEventListener('wheel', (e) => {
-                // 모달이 열려있을 때는 휠 이동 방지 (모달 내부 스크롤 허용)
                 if (activeModalsStack.length > 0) return;
-
-                // 기본 스크롤 동작 방지
                 e.preventDefault();
 
                 if (e.deltaY > 0) {
-                    // 휠을 아래로 내릴 때: 다음 달
                     changeMonth(1);
                 } else if (e.deltaY < 0) {
-                    // 휠을 위로 올릴 때: 전 달
                     changeMonth(-1);
                 }
             }, { passive: false });
         }
-
-        document.addEventListener('DOMContentLoaded', async () => {
-            initTheme(); renderColorPicker();
-            cleanExpiredTrash();
-            initSwipeEvents();
-            initWheelEvents(); // <--- 마우스 휠 이벤트 초기화 추가
-            await fetchEvents();
-        });
 
         function handleSwipe() {
             if (activeModalsStack.length > 0) return;
@@ -1105,10 +1056,13 @@ function initSwipeEvents() {
             }
         }
 
+        /* 통합된 DOMContentLoaded 이벤트 리스너 */
         document.addEventListener('DOMContentLoaded', async () => {
-            initTheme(); renderColorPicker();
+            initTheme(); 
+            renderColorPicker();
             cleanExpiredTrash();
             initSwipeEvents();
+            initWheelEvents();
             await fetchEvents();
         });
 
@@ -1812,7 +1766,6 @@ function initSwipeEvents() {
             if (theme === 'dark') document.documentElement.classList.add('dark');
         }
 
-        /* 기념일 및 반복 일정 목록 모달 (날짜 순 오름차순 정렬 추가) */
         function openAnniversaryModal() {
             closeModal('settingsModal', false, true);
             const list = document.getElementById('anniversaryList');
@@ -1823,7 +1776,6 @@ function initSwipeEvents() {
             } else {
                 const dayNames = ['일요일', '월요일', '화요일', '수요일', '목요일', '금요일', '토요일'];
                 
-                // 날짜 순 정렬을 위한 정보 계산 및 정렬
                 const prepared = rEvents.map(e => {
                     const sDate = parseLocalDate(e.startDate);
                     let formattedDateLabel = '';
