@@ -155,36 +155,72 @@
         }
 
         thead, tbody { display: contents; }
-        tr { display: flex; flex: 1; width: 100%; min-height: 0; position: relative; }
+        tr { display: flex; flex: 1; width: 100%; min-height: 0; position: relative; box-sizing: border-box; }
 
-        tr.current-period { 
-            flex: 2.5; 
-            background-color: #fff4e6 !important; 
-            z-index: 10;
-        }
-
+        /* [수정] 현재 교시 주황색 강조 스타일 (화면 폭 좁을 때 테두리 잘림 방지) */
         tr.current-period td {
-            border-top: 8px solid var(--highlight-orange) !important;
-            border-bottom: 8px solid var(--highlight-orange) !important;
+            border-top: 6px solid var(--highlight-orange) !important;
+            border-bottom: 6px solid var(--highlight-orange) !important;
+            box-sizing: border-box !important;
+        }
+
+        tr.current-period td.subject-cell {
             color: #d9480f !important;
-            font-size: 4.5rem !important; 
+            font-size: clamp(2rem, 4vw, 3.8rem) !important; /* 화면 가로폭 감소 시 폰트 가변 조절 */
             font-weight: 900;
+            white-space: nowrap;
             animation: pulse-border 2.5s infinite;
+            display: flex !important;
+            justify-content: center !important;
+            align-items: center !important;
+            text-align: center !important;
         }
 
-        tr.current-period td:first-child { border-left: 8px solid var(--highlight-orange) !important; }
-        tr.current-period td:last-child { border-right: 8px solid var(--highlight-orange) !important; }
-
-        tr.current-period .period-cell {
-            font-size: 5.5rem !important; 
-            color: #e8590c !important;
-            font-weight: 900;
+        /* 왼쪽/오른쪽 끝 셀 테두리 안쪽 처리 */
+        tr.current-period td:first-child { 
+            border-left: 6px solid var(--highlight-orange) !important; 
+        }
+        tr.current-period td:last-child { 
+            border-right: 6px solid var(--highlight-orange) !important; 
         }
 
-        tr.current-period .time-cell {
-            font-size: 2.2rem !important;
-            color: #e8590c !important;
+        /* [수정] 3개 학년 통합(병합) 중앙 정렬 스타일 강화 (가로폭 감소 대비) */
+        td.merged-center {
+            position: relative !important;
+            z-index: 5;
+            overflow: visible !important;
+            white-space: nowrap !important;
+            text-align: center !important;
+            justify-content: center !important;
+            align-items: center !important;
         }
+
+        /* 가운데 셀(2학년)을 기준점(50%)으로 삼아 완벽한 중앙 정렬 */
+        td.merged-center span.merged-text {
+            position: absolute !important;
+            top: 50% !important;
+            left: 50% !important;
+            transform: translate(-50%, -50%) !important;
+            width: 100% !important; 
+            min-width: 250% !important; /* 좁은 화면에서도 수평 중심 정렬선 이탈 방지 */
+            text-align: center !important;
+            pointer-events: none;
+            white-space: nowrap !important;
+            display: flex !important;
+            justify-content: center !important;
+            align-items: center !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            font-size: inherit !important;
+            font-weight: inherit !important;
+            color: inherit !important;
+        }
+
+        td.merge-hide-text { 
+            color: transparent !important; 
+        }
+        td.no-border-left { border-left: 1px solid transparent !important; }
+        td.no-border-right { border-right: 1px solid transparent !important; }
 
         @keyframes pulse-border {
             0% { border-color: #fd7e14; }
@@ -198,11 +234,13 @@
             font-size: var(--font-size-huge); 
             font-weight: 700;
             position: relative;
+            box-sizing: border-box;
+            overflow: hidden; /* 영역 이탈 방지 */
         }
 
         .col-p { flex: 0 0 10%; }
         .col-t { flex: 0 0 18%; } 
-        .col-s { flex: 1; }
+        .col-s { flex: 1; min-width: 0; } /* 반응형 너비 수축 유연화 */
 
         th { 
             background: #f1f7ff; 
@@ -214,7 +252,7 @@
         .period-cell { background: #fcfcfc; }
         td.time-cell { 
             background: white; 
-            font-size: 1.5rem; 
+            font-size: clamp(1rem, 1.8vw, 1.5rem); 
             text-align: center;
             flex-direction: column;
             line-height: 1.2;
@@ -392,7 +430,7 @@
         .subject-edit-box h4 { margin-bottom: 8px; color: var(--dark-blue); }
         .subject-edit-box input { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 8px; font-size: 1rem; }
 
-        /* 과목 강조 설정창 (Date Filter Modal) 전용 스타일 */
+        /* 과목 강조 설정창 전용 스타일 */
         .color-picker-container {
             display: flex;
             align-items: center;
@@ -415,18 +453,10 @@
             position: relative;
         }
 
-        .color-chip:hover {
-            transform: scale(1.15);
-        }
+        .color-chip:hover { transform: scale(1.15); }
+        .color-chip.active { border-color: #212529; transform: scale(1.15); }
 
-        .color-chip.active {
-            border-color: #212529;
-            transform: scale(1.15);
-        }
-
-        .filter-group {
-            margin-bottom: 20px;
-        }
+        .filter-group { margin-bottom: 20px; }
         .filter-group h4 {
             font-size: 1.15rem;
             color: var(--dark-blue);
@@ -434,11 +464,7 @@
             border-left: 4px solid var(--point-blue);
             padding-left: 8px;
         }
-        .filter-btn-grid {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-        }
+        .filter-btn-grid { display: flex; flex-wrap: wrap; gap: 8px; }
         .filter-btn {
             padding: 8px 16px;
             border: 1px solid #ced4da;
@@ -450,10 +476,7 @@
             cursor: pointer;
             transition: all 0.2s;
         }
-        .filter-btn:hover {
-            border-color: #339af0;
-            color: var(--dark-blue);
-        }
+        .filter-btn:hover { border-color: #339af0; color: var(--dark-blue); }
 
         /* 강조 선택 버튼 색상별 스타일 */
         .filter-btn.selected.hl-yellow { background: #ffd43b; color: #d9480f; border-color: #fcc419; }
@@ -629,7 +652,6 @@
 
     let currentViewDate = new Date();
 
-    // 🎨 선택 가능한 과목 강조 테마 색상 정의
     const HIGHLIGHT_COLORS = [
         { id: 'yellow', name: '노랑 테마', bg: '#ffec99' },
         { id: 'green',  name: '연두 테마', bg: '#d3f9d8' },
@@ -638,7 +660,6 @@
         { id: 'blue',   name: '파랑 테마', bg: '#d0ebff' }
     ];
 
-    // 💾 localStorage에서 저장된 강조 색상 및 과목 상태 불러오기
     let currentHighlightColor = localStorage.getItem('timetable_highlight_color') || 'yellow';
     let savedHighlightedSubjects = localStorage.getItem('timetable_highlighted_subjects');
     let highlightedSubjects = new Set(savedHighlightedSubjects ? JSON.parse(savedHighlightedSubjects) : []);
@@ -652,7 +673,6 @@
 
     let dbCustomSubjects = { ...DEFAULT_SUBJECTS };
 
-    // 강조 관련 설정 localStorage에 저장
     function saveHighlightSettings() {
         localStorage.setItem('timetable_highlight_color', currentHighlightColor);
         localStorage.setItem('timetable_highlighted_subjects', JSON.stringify([...highlightedSubjects]));
@@ -698,7 +718,6 @@
         loadTimetableFromSupabase();
     }
 
-    // 오늘 날짜로 즉시 이동하는 함수
     function goToToday() {
         currentViewDate = new Date();
         updateTime();
@@ -822,36 +841,35 @@
                     cell.classList.add('modified');
                 }
             });
-
-            times.forEach((_, rIdx) => {
-                const c0 = document.querySelector(`[data-row="${rIdx}"][data-col="0"]`);
-                const c1 = document.querySelector(`[data-row="${rIdx}"][data-col="1"]`);
-                const c2 = document.querySelector(`[data-row="${rIdx}"][data-col="2"]`);
-
-                if (c0 && c1 && c2) {
-                    const ov0 = overrides.find(o => o.period - 1 === rIdx && o.grade === 1);
-                    const ov1 = overrides.find(o => o.period - 1 === rIdx && o.grade === 2);
-                    const ov2 = overrides.find(o => o.period - 1 === rIdx && o.grade === 3);
-
-                    if (ov0 && ov1 && ov2) {
-                        const val0 = ov0.subject_name || ov0.subject || "";
-                        const val1 = ov1.subject_name || ov1.subject || "";
-                        const val2 = ov2.subject_name || ov2.subject || "";
-
-                        if (val0 !== "" && val0 === val1 && val1 === val2) {
-                            c0.classList.add('no-border-right', 'merge-hide-text');
-                            c1.classList.add('no-border-left', 'no-border-right');
-                            c2.classList.add('no-border-left', 'merge-hide-text');
-                        }
-                    }
-                }
-            });
         }
+
+        times.forEach((_, rIdx) => {
+            const c0 = document.querySelector(`[data-row="${rIdx}"][data-col="0"]`);
+            const c1 = document.querySelector(`[data-row="${rIdx}"][data-col="1"]`);
+            const c2 = document.querySelector(`[data-row="${rIdx}"][data-col="2"]`);
+
+            if (c0 && c1 && c2) {
+                const val0 = c0.innerText.trim();
+                const val1 = c1.innerText.trim();
+                const val2 = c2.innerText.trim();
+
+                if (val0 !== "" && val0 === val1 && val1 === val2) {
+                    c0.classList.add('no-border-right', 'merge-hide-text');
+                    c1.classList.add('no-border-left', 'no-border-right', 'merged-center');
+                    c2.classList.add('no-border-left', 'merge-hide-text');
+
+                    c1.textContent = ''; 
+                    const span = document.createElement('span');
+                    span.className = 'merged-text';
+                    span.textContent = val1;
+                    c1.appendChild(span);
+                }
+            }
+        });
 
         applyHighlighting();
     }
 
-    // 과목 강조 적용 함수
     function applyHighlighting() {
         document.querySelectorAll('.subject-cell').forEach(cell => {
             const cIdx = parseInt(cell.dataset.col);
@@ -865,7 +883,6 @@
 
             const filterKey = `${catKey}:${text}`;
             
-            // 기존 강조 스타일 클래스 초기화
             cell.classList.remove('highlighted-subject', 'hl-yellow', 'hl-green', 'hl-pink', 'hl-purple', 'hl-blue');
 
             if (text !== "" && highlightedSubjects.has(filterKey)) {
@@ -1000,7 +1017,6 @@
         }
     }
 
-    // 과목 강조 모달 관련
     function openDateFilterModal() {
         renderDateFilterModal();
         document.getElementById('date-filter-modal').style.display = 'block';
@@ -1016,7 +1032,6 @@
         const container = document.getElementById('date-filter-content');
         container.innerHTML = '';
 
-        // 1. 팔레트 (강조 색상 선택 칩) 생성
         const colorPicker = document.createElement('div');
         colorPicker.className = 'color-picker-container';
         colorPicker.innerHTML = `<span style="font-weight: bold; color: var(--dark-blue); font-size: 1.05rem; margin-right: 5px;">🎨 강조 색상:</span>`;
@@ -1028,7 +1043,7 @@
             chip.title = c.name;
             chip.onclick = () => {
                 currentHighlightColor = c.id;
-                saveHighlightSettings(); // 저장
+                saveHighlightSettings();
                 renderDateFilterModal();
                 applyHighlighting();
             };
@@ -1037,7 +1052,6 @@
 
         container.appendChild(colorPicker);
 
-        // 2. 학년별 과목 버튼 목록 생성
         const categories = [
             { title: '1학년 과목', key: 'g1', list: dbCustomSubjects.g1 || DEFAULT_SUBJECTS.g1 },
             { title: '2학년 과목', key: 'g2', list: dbCustomSubjects.g2 || DEFAULT_SUBJECTS.g2 },
@@ -1074,7 +1088,7 @@
                         highlightedSubjects.add(filterKey);
                         btn.classList.add('selected', `hl-${currentHighlightColor}`);
                     }
-                    saveHighlightSettings(); // 저장
+                    saveHighlightSettings();
                     applyHighlighting();
                 };
                 grid.appendChild(btn);
@@ -1087,7 +1101,7 @@
 
     function resetHighlights() {
         highlightedSubjects.clear();
-        saveHighlightSettings(); // 저장
+        saveHighlightSettings();
         renderDateFilterModal();
         applyHighlighting();
     }
@@ -1348,7 +1362,6 @@
         
         const isToday = currentViewDate.toDateString() === now.toDateString();
 
-        // 📅 오늘이 아닐 때만 "오늘" 버튼 표시
         const todayBtn = document.getElementById('today-btn');
         if (todayBtn) {
             todayBtn.style.display = isToday ? 'none' : 'flex';
