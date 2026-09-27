@@ -12,9 +12,10 @@
             --bg-sub: #f8f9fa;
             --modified-bg: #fff9db;     
             --text-dark: #212529;
-            --font-size-huge: 2.3rem; 
+            --font-size-huge: 36px; 
             --break-color: #339af0; 
             --highlight-orange: #fd7e14;
+            --highlight-bg: #fff4e6; /* 현재 교시 전체 배경 색상 */
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -25,7 +26,7 @@
             height: 100vh;
             display: flex;
             flex-direction: column;
-            padding: 2vh 3vh;
+            padding: 20px;
             color: var(--text-dark);
             overflow: hidden;
             transition: cursor 0.3s;
@@ -40,7 +41,7 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            margin-bottom: 2vh; 
+            margin-bottom: 20px; 
             flex-shrink: 0;
             position: relative;
             gap: 15px;
@@ -52,7 +53,7 @@
             border-radius: 50%;
             width: 48px;
             height: 48px;
-            font-size: 1.4rem;
+            font-size: 22px;
             font-weight: bold;
             color: var(--dark-blue);
             cursor: pointer;
@@ -83,7 +84,7 @@
             border: none;
             border-radius: 20px;
             padding: 10px 20px;
-            font-size: 1.1rem;
+            font-size: 18px;
             font-weight: 800;
             cursor: pointer;
             box-shadow: 0 4px 10px rgba(51, 154, 240, 0.3);
@@ -115,7 +116,7 @@
         }
 
         .date-click-area, .time-click-area {
-            font-size: 3.2rem;
+            font-size: 48px;
             font-weight: 800;
             color: #000;
             letter-spacing: -1px;
@@ -158,19 +159,35 @@
         thead, tbody { display: contents; }
         tr { display: flex; flex: 1; width: 100%; min-height: 0; position: relative; box-sizing: border-box; }
 
-        /* 현재 교시 주황색 강조 스타일 */
+        /* 현재 교시 전체 행(교시, 시간, 과목) 배경 및 강조 스타일 */
         tr.current-period td {
+            background-color: var(--highlight-bg) !important;
             border-top: 6px solid var(--highlight-orange) !important;
             border-bottom: 6px solid var(--highlight-orange) !important;
             box-sizing: border-box !important;
+            color: #d9480f !important;
+            font-weight: 900 !important;
+            animation: pulse-border 2.5s infinite;
         }
 
-        tr.current-period td.subject-cell {
+        /* 강조된 현재 교시의 교시 셀 글자 크기 (44px) */
+        tr.current-period td.period-cell {
             color: #d9480f !important;
-            font-size: clamp(2rem, 4vw, 3.8rem) !important; 
-            font-weight: 900;
+            font-weight: 900 !important;
+            font-size: 44px !important;
+        }
+
+        /* 강조된 현재 교시의 시간 셀 글자 크기 (24px) */
+        tr.current-period td.time-cell {
+            color: #d9480f !important;
+            font-weight: 900 !important;
+            font-size: 24px !important;
+        }
+
+        /* 강조된 현재 교시의 과목 글자 크기 (56px) */
+        tr.current-period td.subject-cell {
+            font-size: 56px !important; 
             white-space: nowrap;
-            animation: pulse-border 2.5s infinite;
             display: flex !important;
             justify-content: center !important;
             align-items: center !important;
@@ -249,9 +266,11 @@
         }
 
         .period-cell { background: #fcfcfc; }
+
+        /* 일반 시간 셀 글자 크기 (24px) */
         td.time-cell { 
             background: white; 
-            font-size: clamp(1rem, 1.8vw, 1.5rem); 
+            font-size: 24px; 
             text-align: center;
             flex-direction: column;
             line-height: 1.2;
@@ -308,7 +327,7 @@
 
         .settings-layout {
             display: flex;
-            height: 75vh;
+            height: 600px;
         }
 
         .settings-sidebar {
@@ -322,7 +341,7 @@
         }
 
         .settings-sidebar h3 {
-            font-size: 1.3rem;
+            font-size: 20px;
             color: var(--dark-blue);
             margin-bottom: 20px;
             padding-left: 10px;
@@ -334,7 +353,7 @@
             border-radius: 12px;
             cursor: pointer;
             font-weight: bold;
-            font-size: 1rem;
+            font-size: 16px;
             color: #495057;
             transition: all 0.2s;
         }
@@ -363,7 +382,7 @@
             position: absolute;
             top: 20px;
             right: 25px;
-            font-size: 1.8rem;
+            font-size: 28px;
             font-weight: bold;
             color: #adb5bd;
             cursor: pointer;
@@ -372,7 +391,7 @@
         }
         .modal-close-icon:hover { color: #212529; }
 
-        #subject-input, .pwd-input { width: 100%; padding: 18px; border: 2px solid #e9ecef; border-radius: 15px; font-size: 1.8rem; margin-bottom: 20px; outline: none; text-align: center; }
+        #subject-input, .pwd-input { width: 100%; padding: 18px; border: 2px solid #e9ecef; border-radius: 15px; font-size: 28px; margin-bottom: 20px; outline: none; text-align: center; }
         
         .btn-group { 
             display: grid; 
@@ -387,7 +406,7 @@
             background: #f8f9fa; 
             cursor: pointer; 
             font-weight: bold; 
-            font-size: 1.05rem; 
+            font-size: 16px; 
             text-align: center;
             white-space: nowrap;
             overflow: hidden;
@@ -399,20 +418,20 @@
             border-color: #339af0;
         }
 
-        .save-btn { width: 100%; padding: 16px; background: var(--dark-blue); color: white; border: none; border-radius: 15px; font-weight: 800; font-size: 1.3rem; cursor: pointer; }
+        .save-btn { width: 100%; padding: 16px; background: var(--dark-blue); color: white; border: none; border-radius: 15px; font-weight: 800; font-size: 20px; cursor: pointer; }
         
         .day-btn-group { display: flex; gap: 8px; margin-bottom: 15px; }
-        .day-btn { flex: 1; padding: 10px; border: 2px solid #e9ecef; border-radius: 12px; background: #f8f9fa; font-weight: bold; font-size: 1rem; cursor: pointer; }
+        .day-btn { flex: 1; padding: 10px; border: 2px solid #e9ecef; border-radius: 12px; background: #f8f9fa; font-weight: bold; font-size: 16px; cursor: pointer; }
         .day-btn.active { background: var(--dark-blue); color: white; border-color: var(--dark-blue); }
-        .reset-today-btn { width: 100%; padding: 14px; background: #e03131; color: white; border: none; border-radius: 12px; font-size: 1.1rem; font-weight: bold; cursor: pointer; margin-bottom: 15px; }
+        .reset-today-btn { width: 100%; padding: 14px; background: #e03131; color: white; border: none; border-radius: 12px; font-size: 18px; font-weight: bold; cursor: pointer; margin-bottom: 15px; }
         
         .editor-table { width: 100%; border-collapse: collapse; margin-bottom: 15px; }
-        .editor-table th, .editor-table td { border: 1px solid #ddd; padding: 6px; text-align: center; font-size: 0.95rem; }
+        .editor-table th, .editor-table td { border: 1px solid #ddd; padding: 6px; text-align: center; font-size: 15px; }
         .editor-table th { background: #f1f7ff; color: var(--dark-blue); }
-        .editor-table input { width: 100%; text-align: center; border: 1px solid #ccc; border-radius: 6px; padding: 6px; font-size: 0.95rem; font-weight: bold; }
+        .editor-table input { width: 100%; text-align: center; border: 1px solid #ccc; border-radius: 6px; padding: 6px; font-size: 15px; font-weight: bold; }
         
-        .section-title { font-size: 1.2rem; font-weight: bold; color: var(--dark-blue); margin: 0 0 15px 0; border-bottom: 2px solid #e9ecef; padding-bottom: 8px; }
-        .logout-btn { background: #868e96; color: white; border: none; padding: 10px; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 0.9rem; margin-top: auto; }
+        .section-title { font-size: 20px; font-weight: bold; color: var(--dark-blue); margin: 0 0 15px 0; border-bottom: 2px solid #e9ecef; padding-bottom: 8px; }
+        .logout-btn { background: #868e96; color: white; border: none; padding: 10px; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 14px; margin-top: auto; }
 
         .subject-edit-box {
             background: #f8f9fa;
@@ -422,7 +441,7 @@
             margin-bottom: 20px;
         }
         .subject-edit-box h4 { margin-bottom: 8px; color: var(--dark-blue); }
-        .subject-edit-box input { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 8px; font-size: 1rem; }
+        .subject-edit-box input { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 8px; font-size: 16px; }
 
         /* 과목 강조 설정창 전용 스타일 */
         .color-picker-container {
@@ -452,7 +471,7 @@
 
         .filter-group { margin-bottom: 20px; }
         .filter-group h4 {
-            font-size: 1.15rem;
+            font-size: 18px;
             color: var(--dark-blue);
             margin-bottom: 10px;
             border-left: 4px solid var(--point-blue);
@@ -464,7 +483,7 @@
             border: 1px solid #ced4da;
             border-radius: 20px;
             background: #f8f9fa;
-            font-size: 1rem;
+            font-size: 16px;
             font-weight: 700;
             color: #495057;
             cursor: pointer;
@@ -512,8 +531,8 @@
 <!-- 날짜 클릭 시 노출되는 과목 강조 설정 모달 -->
 <div id="date-filter-modal" class="modal" style="max-width: 720px;">
     <span class="modal-close-icon" onclick="closeDateFilterModal()">✕</span>
-    <h3 style="margin-bottom:8px; text-align:center; font-size: 1.8rem; color: var(--dark-blue);">🎨 과목 강조 색상 설정</h3>
-    <p style="text-align: center; color: #666; font-size: 0.95rem; margin-bottom: 20px;">원하는 강조 색상을 선택한 후 과목을 눌러 색상을 지정하세요.</p>
+    <h3 style="margin-bottom:8px; text-align:center; font-size: 28px; color: var(--dark-blue);">🎨 과목 강조 색상 설정</h3>
+    <p style="text-align: center; color: #666; font-size: 15px; margin-bottom: 20px;">원하는 강조 색상을 선택한 후 과목을 눌러 색상을 지정하세요.</p>
     
     <div id="date-filter-content"></div>
     
@@ -526,7 +545,7 @@
 <!-- 과목 수정 모달 -->
 <div id="modal" class="modal">
     <span class="modal-close-icon" onclick="closeModal()">✕</span>
-    <h3 id="modal-header" style="margin-bottom:20px; text-align:center; font-size: 1.8rem; color: var(--dark-blue);">과목 수정</h3>
+    <h3 id="modal-header" style="margin-bottom:20px; text-align:center; font-size: 28px; color: var(--dark-blue);">과목 수정</h3>
     <input type="text" id="subject-input" autocomplete="off">
     <div class="btn-group" id="quick-btns"></div>
     <button class="save-btn" onclick="saveChanges()">변경 완료 (Enter)</button>
@@ -535,7 +554,7 @@
 <!-- 비밀번호 입력 모달 -->
 <div id="pwd-modal" class="modal" style="max-width: 450px;">
     <span class="modal-close-icon" onclick="closePasswordModal()">✕</span>
-    <h3 style="margin-bottom:20px; text-align:center; font-size: 1.6rem; color: var(--dark-blue);">🔒 비밀번호 입력</h3>
+    <h3 style="margin-bottom:20px; text-align:center; font-size: 26px; color: var(--dark-blue);">🔒 비밀번호 입력</h3>
     <input type="password" id="pwd-input" class="pwd-input" placeholder="비밀번호를 입력하세요">
     <button class="save-btn" onclick="checkPassword()">인증 및 설정 열기</button>
 </div>
@@ -604,7 +623,7 @@
             <!-- 탭 4: 학년별/방과후 과목 목록 설정 -->
             <div id="tab-subjects" class="tab-panel">
                 <div class="section-title">📚 학년 및 방과후 별 수정 과목 선택 버튼 설정 (Supabase 데이터베이스 연동)</div>
-                <p style="font-size: 0.9rem; color: #666; margin-bottom: 15px;">각 항목에 쉼표(,)로 구분하여 빠르게 선택할 과목들을 입력하세요.</p>
+                <p style="font-size: 14px; color: #666; margin-bottom: 15px;">각 항목에 쉼표(,)로 구분하여 빠르게 선택할 과목들을 입력하세요.</p>
                 
                 <div class="subject-edit-box">
                     <h4>1학년 수정 가능 과목</h4>
@@ -730,13 +749,10 @@
         const diffX = touchEndX - touchStartX;
         const diffY = touchEndY - touchStartY;
 
-        // 세로 스크롤 동작과의 충돌을 방지하기 위해 가로 이동량이 더 크고 60px 이상 넘길 때 작동
         if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 60) {
             if (diffX > 0) {
-                // 오른쪽으로 스와이프 -> 하루 전(어제)으로 이동
                 changeDate(-1);
             } else {
-                // 왼쪽으로 스와이프 -> 하루 후(내일)로 이동
                 changeDate(1);
             }
         }
@@ -1064,7 +1080,7 @@
 
         const colorPicker = document.createElement('div');
         colorPicker.className = 'color-picker-container';
-        colorPicker.innerHTML = `<span style="font-weight: bold; color: var(--dark-blue); font-size: 1.05rem; margin-right: 5px;">🎨 강조 색상:</span>`;
+        colorPicker.innerHTML = `<span style="font-weight: bold; color: var(--dark-blue); font-size: 16px; margin-right: 5px;">🎨 강조 색상:</span>`;
 
         HIGHLIGHT_COLORS.forEach(c => {
             const chip = document.createElement('div');
