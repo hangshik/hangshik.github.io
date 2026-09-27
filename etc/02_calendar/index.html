@@ -1297,18 +1297,27 @@
                     }
                 });
 
-                // 실제로 표시할 수 있는 슬롯 수만큼 먼저 보여주고,
-                // 그보다 많은 일정은 모두 +N(더보기)로 처리합니다.
+                // 날짜별 숨겨진 일정 개수 계산
                 let hiddenCounts = Array(7).fill(0);
                 for (let day = 0; day < 7; day++) {
                     const totalOnDay = weekEventsMap[day].length;
                     let visibleOnDay = 0;
                     spans.forEach(span => {
+                        // 기본 표시 허용 슬롯 범위 내 일정
                         if (day >= span.startDay && day <= span.endDay && span.slot < maxSlots) {
                             visibleOnDay++;
                         }
                     });
-                    hiddenCounts[day] = Math.max(0, totalOnDay - visibleOnDay);
+                    
+                    let overflow = Math.max(0, totalOnDay - visibleOnDay);
+                    
+                    // 숨겨진 일정이 정확히 1개이면, 더보기(+1)를 띄우지 않고 
+                    // 그 1개 일정을 해당 칸(maxSlots 번 슬롯)에 바로 보여줍니다.
+                    if (overflow === 1) {
+                        hiddenCounts[day] = 0;
+                    } else {
+                        hiddenCounts[day] = overflow;
+                    }
                 }
 
                 let eventsHtml = '';
@@ -1316,7 +1325,14 @@
                 spans.forEach(span => {
                     let isOverflown = false;
                     for (let d = span.startDay; d <= span.endDay; d++) {
-                        if (hiddenCounts[d] > 0 && span.slot >= maxSlots) {
+                        // 숨겨진 일정이 2개 이상이라 더보기 버튼이 표시되는 날짜이고,
+                        // 현재 스팬이 maxSlots 이상 슬롯에 위치하면 화면 표시 대상에서 제외
+                        if (hiddenCounts[d] >= 2 && span.slot >= maxSlots) {
+                            isOverflown = true;
+                            break;
+                        }
+                        // 만약 슬롯 위치가 maxSlots를 초과(maxSlots + 1 이상)하면 항상 제외
+                        if (span.slot > maxSlots) {
                             isOverflown = true;
                             break;
                         }
@@ -1335,7 +1351,7 @@
 
                     let displayTitle = span.evt.title || '';
                     if (displayTitle.startsWith('출 ')) {
-                        displayTitle = `<span style="color: #eee8aa; font-weight: bold;">출</span>` + displayTitle.slice(1);
+                        displayTitle = `<span style="color: gold; font-weight: bold;">출</span>` + displayTitle.slice(1);
                     }
 
                     eventsHtml += `
@@ -1350,7 +1366,8 @@
                 });
 
                 for (let day = 0; day < 7; day++) {
-                    if (hiddenCounts[day] > 0) {
+                    // +2 이상인 경우에만 더보기 버튼 표시
+                    if (hiddenCounts[day] >= 2) {
                         let leftPercent = (day * 100) / 7;
                         let top = `${maxSlots * EVENT_HEIGHT + 1}px`;
                         let dateStr = week[day].dateStr;
