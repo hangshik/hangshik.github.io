@@ -30,6 +30,7 @@
             overflow: hidden;
             transition: cursor 0.3s;
             user-select: none;
+            touch-action: pan-y; /* 세로 스크롤 허용 및 가로 터치 제어 최적화 */
         }
 
         .hide-cursor { cursor: none !important; }
@@ -652,6 +653,12 @@
 
     let currentViewDate = new Date();
 
+    /* --- 모바일 좌우 드래그(스와이프) 월 이동 변수 --- */
+    let touchStartX = 0;
+    let touchStartY = 0;
+    let touchEndX = 0;
+    let touchEndY = 0;
+
     const HIGHLIGHT_COLORS = [
         { id: 'yellow', name: '노랑 테마', bg: '#ffec99' },
         { id: 'green',  name: '연두 테마', bg: '#d3f9d8' },
@@ -695,6 +702,20 @@
         document.addEventListener("mousemove", handleMouseMove);
         window.addEventListener('mouseup', endDrag);
 
+        // --- 모바일 터치 이벤트 리스너 등록 ---
+        document.addEventListener('touchstart', (e) => {
+            if (document.getElementById('overlay').style.display === 'block') return;
+            touchStartX = e.changedTouches[0].screenX;
+            touchStartY = e.changedTouches[0].screenY;
+        }, { passive: true });
+
+        document.addEventListener('touchend', (e) => {
+            if (document.getElementById('overlay').style.display === 'block') return;
+            touchEndX = e.changedTouches[0].screenX;
+            touchEndY = e.changedTouches[0].screenY;
+            handleSwipe();
+        }, { passive: true });
+
         await loadTimetableFromSupabase();
         initRealtime();
 
@@ -712,8 +733,32 @@
         });
     }
 
+    /* 모바일 좌우 스와이프 판단 처리 */
+    function handleSwipe() {
+        const diffX = touchEndX - touchStartX;
+        const diffY = touchEndY - touchStartY;
+
+        // 세로 스크롤 대비 가로 이동량이 크고 60px 이상 드래그 되었을 때만 월 이동
+        if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 60) {
+            if (diffX > 0) {
+                // 오른쪽으로 스와이프 -> 이전 달로 이동
+                changeMonth(-1);
+            } else {
+                // 왼쪽으로 스와이프 -> 다음 달로 이동
+                changeMonth(1);
+            }
+        }
+    }
+
     function changeDate(days) {
         currentViewDate.setDate(currentViewDate.getDate() + days);
+        updateTime();
+        loadTimetableFromSupabase();
+    }
+
+    /* 월 단위 이동 함수 */
+    function changeMonth(months) {
+        currentViewDate.setMonth(currentViewDate.getMonth() + months);
         updateTime();
         loadTimetableFromSupabase();
     }
