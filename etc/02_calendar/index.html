@@ -128,7 +128,6 @@
             width: 100%;
         }
 
-        /* 가운데 정렬되는 날짜 이동 영역: < 2026년 9월 > 오늘 */
         .header-nav {
             grid-column: 2;
             display: flex;
@@ -162,7 +161,6 @@
         }
         .btn-icon:hover { background-color: var(--bg-hover); }
 
-        /* 좌우 월 이동 화살표: 기존보다 1.2배 크게 */
         .btn-nav-arrow {
             font-size: 1.14rem;
             padding: 0.4rem;
@@ -170,8 +168,6 @@
             height: 2rem;
         }
 
-        /* 오늘 버튼 스타일 */
-        /* > 버튼과 오늘 버튼 사이 간격을 기존의 3배로 조정 */
         .btn-nav-today { margin-left: 0.3rem; }
         .btn-today {
             background: none; border: 1px solid var(--border-color);
@@ -467,6 +463,17 @@
         .day-event-color { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
         .day-event-title { font-size: 0.825rem; font-weight: 500; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
+        /* 모바일 날짜 클릭용 일정 추가 버튼: PC에서는 표시하지 않음 */
+        .mobile-day-add-btn { display: none; }
+        @media (max-width: 640px) {
+            .mobile-day-add-btn {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                gap: 0.35rem;
+            }
+        }
+
         .loading-overlay {
             position: absolute; inset: 0; background: rgba(255,255,255,0.7);
             display: flex; justify-content: center; align-items: center; z-index: 50;
@@ -609,7 +616,12 @@
         <div class="modal-content">
             <h3 class="modal-title" id="dayViewTitle" style="margin-bottom: 1rem;">일정 목록</h3>
             <ul id="dayViewList" class="day-event-list"></ul>
-            <div class="modal-footer"><div class="modal-actions"><button onclick="closeDayViewModal()" class="btn-default">닫기</button></div></div>
+            <div class="modal-footer">
+                <button id="dayViewAddBtn" onclick="addEventFromDayView()" class="btn-primary mobile-day-add-btn">
+                    <i class="fa-solid fa-plus"></i> 일정 추가
+                </button>
+                <div class="modal-actions"><button onclick="closeDayViewModal()" class="btn-default">닫기</button></div>
+            </div>
         </div>
     </div>
 
@@ -689,20 +701,6 @@
         const colors = ['bg-blue-500', 'bg-red-500', 'bg-green-500', 'bg-yellow-500', 'bg-pink-500', 'bg-indigo-500'];
         const recurrenceText = { 'daily': '매일', 'weekly': '매주', 'monthly': '매월', 'yearly': '매년 (양력)', 'yearly_lunar': '매년 (음력)' };
 
-        /* --- 대한민국 공휴일 및 대체공휴일 산출 로직 ---
-           2026년 5월 11일 시행 현행 규정을 기준으로 계산합니다.
-           ※ 공휴일법/관공서공휴일규정의 대체공휴일 규칙을 그대로 반영
-
-           대체공휴일 대상
-           1) 국경일(3·1절, 제헌절, 광복절, 개천절, 한글날),
-              부처님오신날, 노동절, 어린이날, 성탄절
-              → 토요일/일요일 또는 다른 공휴일과 겹치면 대체공휴일
-           2) 설날·추석 연휴
-              → 일요일 또는 다른 공휴일과 겹치면 대체공휴일
-           3) 신정·현충일·선거일은 대체공휴일 대상 아님
-           4) 대체공휴일이 다른 대체공휴일과 겹치거나 토요일에 지정되면
-              그 다음 첫 번째 비공휴일로 이동
-        */
         let holidayCache = {};
 
         function generateHolidaysForYear(year) {
@@ -1001,6 +999,15 @@
             }
         });
 
+        // 일정 목록 모달은 모달 바깥(어두운 영역)을 클릭해도 닫힙니다.
+        document.addEventListener('click', (e) => {
+            const dayViewModal = document.getElementById('dayViewModal');
+            if (!dayViewModal || dayViewModal.classList.contains('hidden')) return;
+            if (e.target === dayViewModal) {
+                closeDayViewModal();
+            }
+        });
+
         /* --- 모바일 터치 스와이프 이벤트 --- */
         let touchStartX = 0;
         let touchStartY = 0;
@@ -1094,7 +1101,11 @@
             try {
                 const { data, error } = await supabaseClient.from('Calendar').select('*');
                 if (error) throw error;
-                events = data || []; drawCalendar();
+                events = (data || []).map(e => ({
+                    ...e,
+                    order: (e.order !== undefined && e.order !== null) ? Number(e.order) : null
+                }));
+                drawCalendar();
             } catch (err) { showToast('일정을 불러오는 데 실패했습니다.'); }
             finally { showLoading(false); }
         }
@@ -1201,7 +1212,7 @@
             const EVENT_HEIGHT = BLOCK_HEIGHT + 2; 
 
             const gridContainer = document.getElementById('calendarGrid');
-            const availableGridHeight = gridContainer ? gridContainer.clientHeight : (window.innerHeight - 100);
+            const availableGridHeight = (gridContainer && gridContainer.clientHeight > 0) ? gridContainer.clientHeight : (window.innerHeight - 100);
             const approxRowHeight = availableGridHeight / weekCount;
             const headerOffset = isMobile ? 26 : 30;
             
@@ -1286,18 +1297,18 @@
                     }
                 });
 
+                // 실제로 표시할 수 있는 슬롯 수만큼 먼저 보여주고,
+                // 그보다 많은 일정은 모두 +N(더보기)로 처리합니다.
                 let hiddenCounts = Array(7).fill(0);
                 for (let day = 0; day < 7; day++) {
                     const totalOnDay = weekEventsMap[day].length;
                     let visibleOnDay = 0;
                     spans.forEach(span => {
-                        if (day >= span.startDay && day <= span.endDay) {
-                            if (span.slot < maxSlots || (totalOnDay === maxSlots + 1 && span.slot === maxSlots)) {
-                                visibleOnDay++;
-                            }
+                        if (day >= span.startDay && day <= span.endDay && span.slot < maxSlots) {
+                            visibleOnDay++;
                         }
                     });
-                    hiddenCounts[day] = totalOnDay - visibleOnDay;
+                    hiddenCounts[day] = Math.max(0, totalOnDay - visibleOnDay);
                 }
 
                 let eventsHtml = '';
@@ -1305,7 +1316,7 @@
                 spans.forEach(span => {
                     let isOverflown = false;
                     for (let d = span.startDay; d <= span.endDay; d++) {
-                        if (hiddenCounts[d] >= 2 && span.slot >= maxSlots) {
+                        if (hiddenCounts[d] > 0 && span.slot >= maxSlots) {
                             isOverflown = true;
                             break;
                         }
@@ -1322,19 +1333,24 @@
                     if(!span.isStart) classes += ' clip-start';
                     if(!span.isEnd) classes += ' clip-end';
 
+                    let displayTitle = span.evt.title || '';
+                    if (displayTitle.startsWith('출 ')) {
+                        displayTitle = `<span style="color: #eee8aa; font-weight: bold;">출</span>` + displayTitle.slice(1);
+                    }
+
                     eventsHtml += `
                         <div class="event-block ${classes}"
                              style="top: ${top}; left: calc(${leftPercent}% + ${ml}px); width: calc(${widthPercent}% - ${ml + mr}px);"
                              draggable="true" ondragstart="dragStart(event, '${span.evt.id}')"
                              onclick="event.stopPropagation(); openEventModal('${span.evt.id}')"
                              title="${span.evt.title}">
-                            ${span.evt.title} ${span.evt.recurrence !== 'none' ? '🔄' : ''}
+                            ${displayTitle} ${span.evt.recurrence !== 'none' ? '🔄' : ''}
                         </div>
                     `;
                 });
 
                 for (let day = 0; day < 7; day++) {
-                    if (hiddenCounts[day] >= 2) {
+                    if (hiddenCounts[day] > 0) {
                         let leftPercent = (day * 100) / 7;
                         let top = `${maxSlots * EVENT_HEIGHT + 1}px`;
                         let dateStr = week[day].dateStr;
@@ -1354,7 +1370,7 @@
                         <div class="bg-grid">
                             ${week.map(d => `
                                 <div class="bg-cell ${!d.isCurrentMonth ? 'out-month' : ''}"
-                                     onclick="openEventModal(null, '${d.dateStr}')"
+                                     onclick="handleDateCellClick('${d.dateStr}')"
                                      ondragover="event.preventDefault()"
                                      ondrop="drop(event, '${d.dateStr}')">
                                 </div>
@@ -1370,7 +1386,7 @@
                                 let lunarTxt = '';
                                 if (lunarDisplayMode !== 'NONE') {
                                     const lunarInfo = getLunarInfo(d.dateObj);
-                                    if (lunarDisplayMode === 'ALL' || (lunarDisplayMode === '1_15' && (lunarInfo.day === 1 || lunarInfo.day === 15))) {
+                                    if (lunarInfo && (lunarDisplayMode === 'ALL' || (lunarDisplayMode === '1_15' && (lunarInfo.day === 1 || lunarInfo.day === 15)))) {
                                         lunarTxt = `${lunarInfo.isLeap ? '윤' : ''}${lunarInfo.month}.${lunarInfo.day}`;
                                     }
                                 }
@@ -1437,7 +1453,32 @@
         let draggedListIndex = null;
         let touchDraggedEl = null;
 
+        let currentDayViewDate = null;
+
+        function addEventFromDayView() {
+            if (!currentDayViewDate) return;
+            closeModal('dayViewModal', false, true);
+            openEventModal(null, currentDayViewDate);
+        }
+
+        function handleDateCellClick(dateStr) {
+            // PC에서는 기존 동작을 그대로 유지
+            if (window.innerWidth > 640) {
+                openEventModal(null, dateStr);
+                return;
+            }
+
+            // 모바일에서는 해당 날짜에 일정이 있으면 일정 목록을 표시
+            const dayEvents = getEventsForDate(parseLocalDate(dateStr));
+            if (dayEvents.length === 0) {
+                openEventModal(null, dateStr);
+            } else {
+                openDayView(dateStr);
+            }
+        }
+
         function openDayView(dateStr) {
+            currentDayViewDate = dateStr;
             const [y, m, d] = dateStr.split('-');
             document.getElementById('dayViewTitle').innerText = `${y}년 ${parseInt(m)}월 ${parseInt(d)}일 일정`;
             
@@ -1448,31 +1489,38 @@
             if (dayEvents.length === 0) {
                 ul.innerHTML = '<li style="text-align:center; padding:1rem; color:var(--text-muted);">일정이 없습니다.</li>';
             } else {
-                ul.innerHTML = dayEvents.map((evt, idx) => `
-                    <li class="day-event-item" 
-                        draggable="true" 
-                        data-id="${evt.id}" 
-                        data-index="${idx}"
-                        ondragstart="handleListDragStart(event, ${idx})" 
-                        ondragover="handleListDragOver(event)" 
-                        ondragleave="handleListDragLeave(event)"
-                        ondrop="handleListDrop(event, ${idx})"
-                        ondragend="handleListDragEnd(event)"
-                        ontouchstart="handleListTouchStart(event)"
-                        ontouchmove="handleListTouchMove(event)"
-                        ontouchend="handleListTouchEnd(event)"
-                        style="justify-content: space-between; cursor: grab; user-select: none;" 
-                        onclick="editEventFromDayView('${evt.id}')">
-                        <div style="display:flex; align-items:center; gap:0.6rem; overflow:hidden; flex:1;">
-                            <i class="fa-solid fa-grip-lines" style="color:var(--text-muted); font-size:0.85rem; cursor:grab; flex-shrink:0;"></i>
-                            <div class="day-event-color ${evt.color}"></div>
-                            <div class="day-event-title">${evt.title}</div>
-                        </div>
-                        <button class="btn-icon" title="수정" style="padding:0.35rem; font-size:0.85rem; flex-shrink:0;" onclick="event.stopPropagation(); editEventFromDayView('${evt.id}')">
-                            <i class="fa-solid fa-pen"></i>
-                        </button>
-                    </li>
-                `).join('');
+                ul.innerHTML = dayEvents.map((evt, idx) => {
+                    let modalTitle = evt.title || '';
+                    if (modalTitle.startsWith('출 ')) {
+                        modalTitle = `<span style="color: #ff6347; font-weight: bold;">출</span>` + modalTitle.slice(1);
+                    }
+
+                    return `
+                        <li class="day-event-item" 
+                            draggable="true" 
+                            data-id="${evt.id}" 
+                            data-index="${idx}"
+                            ondragstart="handleListDragStart(event, ${idx})" 
+                            ondragover="handleListDragOver(event)" 
+                            ondragleave="handleListDragLeave(event)"
+                            ondrop="handleListDrop(event, ${idx})"
+                            ondragend="handleListDragEnd(event)"
+                            ontouchstart="handleListTouchStart(event)"
+                            ontouchmove="handleListTouchMove(event)"
+                            ontouchend="handleListTouchEnd(event)"
+                            style="justify-content: space-between; cursor: grab; user-select: none;" 
+                            onclick="editEventFromDayView('${evt.id}')">
+                            <div style="display:flex; align-items:center; gap:0.6rem; overflow:hidden; flex:1;">
+                                <i class="fa-solid fa-grip-lines" style="color:var(--text-muted); font-size:0.85rem; cursor:grab; flex-shrink:0;"></i>
+                                <div class="day-event-color ${evt.color}"></div>
+                                <div class="day-event-title">${modalTitle}</div>
+                            </div>
+                            <button class="btn-icon" title="수정" style="padding:0.35rem; font-size:0.85rem; flex-shrink:0;" onclick="event.stopPropagation(); editEventFromDayView('${evt.id}')">
+                                <i class="fa-solid fa-pen"></i>
+                            </button>
+                        </li>
+                    `;
+                }).join('');
             }
             openModalUI('dayViewModal');
         }
@@ -1592,6 +1640,7 @@
         async function closeDayViewModal() {
             await applyListOrder();
             drawCalendar();
+            currentDayViewDate = null;
             closeModal('dayViewModal');
         }
 
