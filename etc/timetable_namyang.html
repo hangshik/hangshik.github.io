@@ -158,7 +158,7 @@
         thead, tbody { display: contents; }
         tr { display: flex; flex: 1; width: 100%; min-height: 0; position: relative; box-sizing: border-box; }
 
-        /* [수정] 현재 교시 주황색 강조 스타일 (화면 폭 좁을 때 테두리 잘림 방지) */
+        /* 현재 교시 주황색 강조 스타일 */
         tr.current-period td {
             border-top: 6px solid var(--highlight-orange) !important;
             border-bottom: 6px solid var(--highlight-orange) !important;
@@ -167,7 +167,7 @@
 
         tr.current-period td.subject-cell {
             color: #d9480f !important;
-            font-size: clamp(2rem, 4vw, 3.8rem) !important; /* 화면 가로폭 감소 시 폰트 가변 조절 */
+            font-size: clamp(2rem, 4vw, 3.8rem) !important; 
             font-weight: 900;
             white-space: nowrap;
             animation: pulse-border 2.5s infinite;
@@ -177,7 +177,6 @@
             text-align: center !important;
         }
 
-        /* 왼쪽/오른쪽 끝 셀 테두리 안쪽 처리 */
         tr.current-period td:first-child { 
             border-left: 6px solid var(--highlight-orange) !important; 
         }
@@ -185,7 +184,7 @@
             border-right: 6px solid var(--highlight-orange) !important; 
         }
 
-        /* [수정] 3개 학년 통합(병합) 중앙 정렬 스타일 강화 (가로폭 감소 대비) */
+        /* 3개 학년 통합(병합) 중앙 정렬 스타일 */
         td.merged-center {
             position: relative !important;
             z-index: 5;
@@ -196,14 +195,13 @@
             align-items: center !important;
         }
 
-        /* 가운데 셀(2학년)을 기준점(50%)으로 삼아 완벽한 중앙 정렬 */
         td.merged-center span.merged-text {
             position: absolute !important;
             top: 50% !important;
             left: 50% !important;
             transform: translate(-50%, -50%) !important;
             width: 100% !important; 
-            min-width: 250% !important; /* 좁은 화면에서도 수평 중심 정렬선 이탈 방지 */
+            min-width: 250% !important; 
             text-align: center !important;
             pointer-events: none;
             white-space: nowrap !important;
@@ -236,12 +234,12 @@
             font-weight: 700;
             position: relative;
             box-sizing: border-box;
-            overflow: hidden; /* 영역 이탈 방지 */
+            overflow: hidden; 
         }
 
         .col-p { flex: 0 0 10%; }
         .col-t { flex: 0 0 18%; } 
-        .col-s { flex: 1; min-width: 0; } /* 반응형 너비 수축 유연화 */
+        .col-s { flex: 1; min-width: 0; }
 
         th { 
             background: #f1f7ff; 
@@ -264,7 +262,7 @@
         .modified { background-color: var(--modified-bg) !important; }
         .selected { background-color: #e7f5ff !important; color: var(--dark-blue) !important; }
 
-        /* --- 과목 강조 테마별 셀 스타일 --- */
+        /* 과목 강조 테마별 셀 스타일 */
         td.highlighted-subject { font-weight: 900 !important; }
         
         td.highlighted-subject.hl-yellow { background-color: #ffec99 !important; color: #d9480f !important; box-shadow: inset 0 0 0 4px #ffd43b; }
@@ -272,11 +270,6 @@
         td.highlighted-subject.hl-pink   { background-color: #ffdeeb !important; color: #c2255c !important; box-shadow: inset 0 0 0 4px #fcc2d7; }
         td.highlighted-subject.hl-purple { background-color: #eebefa !important; color: #862e9c !important; box-shadow: inset 0 0 0 4px #da77f2; }
         td.highlighted-subject.hl-blue   { background-color: #d0ebff !important; color: #1864ab !important; box-shadow: inset 0 0 0 4px #74c0fc; }
-
-        /* 3개 학년 통합 처리용 셀 스타일 */
-        td.merge-hide-text, tr.current-period td.merge-hide-text { color: transparent !important; }
-        td.no-border-left { border-left: 1px solid transparent !important; }
-        td.no-border-right { border-right: 1px solid transparent !important; }
 
         /* 오버레이 */
         .overlay { 
@@ -479,7 +472,6 @@
         }
         .filter-btn:hover { border-color: #339af0; color: var(--dark-blue); }
 
-        /* 강조 선택 버튼 색상별 스타일 */
         .filter-btn.selected.hl-yellow { background: #ffd43b; color: #d9480f; border-color: #fcc419; }
         .filter-btn.selected.hl-green  { background: #8ce99a; color: #2b8a3e; border-color: #69db7c; }
         .filter-btn.selected.hl-pink   { background: #fcc2d7; color: #c2255c; border-color: #faa2c1; }
@@ -517,7 +509,7 @@
 <!-- 오버레이 -->
 <div id="overlay" class="overlay" onclick="closeAllModals()"></div>
 
-<!-- 날짜 클릭 시 노출되는 과목 강조 설정 모달 (암호 불필요) -->
+<!-- 날짜 클릭 시 노출되는 과목 강조 설정 모달 -->
 <div id="date-filter-modal" class="modal" style="max-width: 720px;">
     <span class="modal-close-icon" onclick="closeDateFilterModal()">✕</span>
     <h3 style="margin-bottom:8px; text-align:center; font-size: 1.8rem; color: var(--dark-blue);">🎨 과목 강조 색상 설정</h3>
@@ -609,7 +601,7 @@
                 <button class="save-btn" onclick="saveScheduleTimes()">교시 시간대 저장</button>
             </div>
 
-            <!-- 탭 4: 학년별/방과후 과목 목록 설정 (Supabase 연동) -->
+            <!-- 탭 4: 학년별/방과후 과목 목록 설정 -->
             <div id="tab-subjects" class="tab-panel">
                 <div class="section-title">📚 학년 및 방과후 별 수정 과목 선택 버튼 설정 (Supabase 데이터베이스 연동)</div>
                 <p style="font-size: 0.9rem; color: #666; margin-bottom: 15px;">각 항목에 쉼표(,)로 구분하여 빠르게 선택할 과목들을 입력하세요.</p>
@@ -653,7 +645,7 @@
 
     let currentViewDate = new Date();
 
-    /* --- 모바일 좌우 드래그(스와이프) 월 이동 변수 --- */
+    /* --- 모바일 좌우 드래그(스와이프) 좌표 변수 --- */
     let touchStartX = 0;
     let touchStartY = 0;
     let touchEndX = 0;
@@ -733,32 +725,25 @@
         });
     }
 
-    /* 모바일 좌우 스와이프 판단 처리 */
+    /* 모바일 좌우 스와이프 판단 처리 (일 단위 이동) */
     function handleSwipe() {
         const diffX = touchEndX - touchStartX;
         const diffY = touchEndY - touchStartY;
 
-        // 세로 스크롤 대비 가로 이동량이 크고 60px 이상 드래그 되었을 때만 월 이동
+        // 세로 스크롤 동작과의 충돌을 방지하기 위해 가로 이동량이 더 크고 60px 이상 넘길 때 작동
         if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 60) {
             if (diffX > 0) {
-                // 오른쪽으로 스와이프 -> 이전 달로 이동
-                changeMonth(-1);
+                // 오른쪽으로 스와이프 -> 하루 전(어제)으로 이동
+                changeDate(-1);
             } else {
-                // 왼쪽으로 스와이프 -> 다음 달로 이동
-                changeMonth(1);
+                // 왼쪽으로 스와이프 -> 하루 후(내일)로 이동
+                changeDate(1);
             }
         }
     }
 
     function changeDate(days) {
         currentViewDate.setDate(currentViewDate.getDate() + days);
-        updateTime();
-        loadTimetableFromSupabase();
-    }
-
-    /* 월 단위 이동 함수 */
-    function changeMonth(months) {
-        currentViewDate.setMonth(currentViewDate.getMonth() + months);
         updateTime();
         loadTimetableFromSupabase();
     }
