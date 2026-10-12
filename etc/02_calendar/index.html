@@ -272,9 +272,9 @@
             overflow: hidden; box-sizing: border-box;
         }
         .date-top-row {
-            display: flex; justify-content: flex-start; align-items: center; gap: 4px; width: 100%; flex-wrap: wrap;
+            display: flex; justify-content: flex-start; align-items: center; gap: 4px; width: 100%; flex-wrap: nowrap;
         }
-        .date-num { font-size: 0.85rem; font-weight: 500; line-height: 1; }
+        .date-num { font-size: 0.85rem; font-weight: 500; line-height: 1; flex-shrink: 0; }
         .date-num.today {
             background-color: var(--primary); color: #fff; width: 1.35rem; height: 1.35rem;
             display: flex; align-items: center; justify-content: center; border-radius: 50%; font-weight: bold;
@@ -286,7 +286,7 @@
             padding: 1px 3px; border-radius: 3px; white-space: nowrap; overflow: hidden;
             text-overflow: ellipsis; max-width: 100%; display: block; line-height: 1.1;
         }
-        .date-lunar { font-size: 0.6rem; color: var(--text-muted); line-height: 1; }
+        .date-lunar { font-size: 0.6rem; color: var(--text-muted); line-height: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
         @media (max-width: 640px) {
             .date-cell-info { padding: 2px; gap: 1px; }
