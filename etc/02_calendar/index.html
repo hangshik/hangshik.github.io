@@ -272,7 +272,7 @@
             overflow: hidden; box-sizing: border-box;
         }
         .date-top-row {
-            display: flex; justify-content: space-between; align-items: center; width: 100%;
+            display: flex; justify-content: flex-start; align-items: center; gap: 4px; width: 100%; flex-wrap: wrap;
         }
         .date-num { font-size: 0.85rem; font-weight: 500; line-height: 1; }
         .date-num.today {
@@ -999,7 +999,6 @@
             }
         });
 
-        // 일정 목록 모달은 모달 바깥(어두운 영역)을 클릭해도 닫힙니다.
         document.addEventListener('click', (e) => {
             const dayViewModal = document.getElementById('dayViewModal');
             if (!dayViewModal || dayViewModal.classList.contains('hidden')) return;
@@ -1008,7 +1007,6 @@
             }
         });
 
-        /* --- 모바일 터치 스와이프 이벤트 --- */
         let touchStartX = 0;
         let touchStartY = 0;
         let touchEndX = 0;
@@ -1030,7 +1028,6 @@
             }, { passive: true });
         }
 
-        /* --- 마우스 가운데 휠 월 이동 제어 --- */
         function initWheelEvents() {
             const wrapper = document.getElementById('calendarWrapper');
             if (!wrapper) return;
@@ -1063,7 +1060,6 @@
             }
         }
 
-        /* 통합된 DOMContentLoaded 이벤트 리스너 */
         document.addEventListener('DOMContentLoaded', async () => {
             initTheme(); 
             renderColorPicker();
@@ -1297,13 +1293,11 @@
                     }
                 });
 
-                // 날짜별 숨겨진 일정 개수 계산
                 let hiddenCounts = Array(7).fill(0);
                 for (let day = 0; day < 7; day++) {
                     const totalOnDay = weekEventsMap[day].length;
                     let visibleOnDay = 0;
                     spans.forEach(span => {
-                        // 기본 표시 허용 슬롯 범위 내 일정
                         if (day >= span.startDay && day <= span.endDay && span.slot < maxSlots) {
                             visibleOnDay++;
                         }
@@ -1311,8 +1305,6 @@
                     
                     let overflow = Math.max(0, totalOnDay - visibleOnDay);
                     
-                    // 숨겨진 일정이 정확히 1개이면, 더보기(+1)를 띄우지 않고 
-                    // 그 1개 일정을 해당 칸(maxSlots 번 슬롯)에 바로 보여줍니다.
                     if (overflow === 1) {
                         hiddenCounts[day] = 0;
                     } else {
@@ -1325,13 +1317,10 @@
                 spans.forEach(span => {
                     let isOverflown = false;
                     for (let d = span.startDay; d <= span.endDay; d++) {
-                        // 숨겨진 일정이 2개 이상이라 더보기 버튼이 표시되는 날짜이고,
-                        // 현재 스팬이 maxSlots 이상 슬롯에 위치하면 화면 표시 대상에서 제외
                         if (hiddenCounts[d] >= 2 && span.slot >= maxSlots) {
                             isOverflown = true;
                             break;
                         }
-                        // 만약 슬롯 위치가 maxSlots를 초과(maxSlots + 1 이상)하면 항상 제외
                         if (span.slot > maxSlots) {
                             isOverflown = true;
                             break;
@@ -1353,7 +1342,9 @@
                     if (displayTitle.startsWith('출 ')) {
                         displayTitle = `<span style="color: gold; font-weight: bold;">출</span>` + displayTitle.slice(1);
                     }
-
+                    if (displayTitle.startsWith('제출 ')) {
+                        displayTitle = `<span style="color: gold; font-weight: bold;">제출</span>` + displayTitle.slice(2);
+                    }
                     eventsHtml += `
                         <div class="event-block ${classes}"
                              style="top: ${top}; left: calc(${leftPercent}% + ${ml}px); width: calc(${widthPercent}% - ${ml + mr}px);"
@@ -1366,7 +1357,6 @@
                 });
 
                 for (let day = 0; day < 7; day++) {
-                    // +2 이상인 경우에만 더보기 버튼 표시
                     if (hiddenCounts[day] >= 2) {
                         let leftPercent = (day * 100) / 7;
                         let top = `${maxSlots * EVENT_HEIGHT + 1}px`;
@@ -1401,7 +1391,7 @@
                                 let nCls = isToday ? 'today' : (!d.isCurrentMonth ? 'muted' : (d.isSunday || hName ? 'text-sun' : (d.isSaturday ? 'text-sat' : '')));
                                 
                                 let lunarTxt = '';
-                                if (lunarDisplayMode !== 'NONE') {
+                                if (!hName && lunarDisplayMode !== 'NONE') {
                                     const lunarInfo = getLunarInfo(d.dateObj);
                                     if (lunarInfo && (lunarDisplayMode === 'ALL' || (lunarDisplayMode === '1_15' && (lunarInfo.day === 1 || lunarInfo.day === 15)))) {
                                         lunarTxt = `${lunarInfo.isLeap ? '윤' : ''}${lunarInfo.month}.${lunarInfo.day}`;
@@ -1411,9 +1401,8 @@
                                 return `
                                     <div class="date-cell-info">
                                         <div class="date-top-row">
-                                            <span class="date-num ${nCls}">${d.d}</span>${lunarTxt ? `<span class="date-lunar">${lunarTxt}</span>` : ''}
+                                            <span class="date-num ${nCls}">${d.d}</span>${hName ? `<span class="date-holiday" title="${hName}">${hName}</span>` : (lunarTxt ? `<span class="date-lunar">${lunarTxt}</span>` : '')}
                                         </div>
-                                        ${hName ? `<span class="date-holiday" title="${hName}">${hName}</span>` : ''}
                                     </div>
                                 `;
                             }).join('')}
@@ -1479,13 +1468,11 @@
         }
 
         function handleDateCellClick(dateStr) {
-            // PC에서는 기존 동작을 그대로 유지
             if (window.innerWidth > 640) {
                 openEventModal(null, dateStr);
                 return;
             }
 
-            // 모바일에서는 해당 날짜에 일정이 있으면 일정 목록을 표시
             const dayEvents = getEventsForDate(parseLocalDate(dateStr));
             if (dayEvents.length === 0) {
                 openEventModal(null, dateStr);
@@ -1510,6 +1497,9 @@
                     let modalTitle = evt.title || '';
                     if (modalTitle.startsWith('출 ')) {
                         modalTitle = `<span style="color: #ff6347; font-weight: bold;">출</span>` + modalTitle.slice(1);
+                    }
+                    if (modalTitle.startsWith('제출 ')) {
+                        modalTitle = `<span style="color: #ff6347; font-weight: bold;">제출</span>` + modalTitle.slice(2);
                     }
 
                     return `
@@ -1733,7 +1723,6 @@
             }
         }
 
-        /* --- Modals & UI Actions --- */
         function openYearModal() {
             let html = ''; const base = new Date().getFullYear(); const currentY = currentDate.getFullYear();
             let selectedBtnId = '';
