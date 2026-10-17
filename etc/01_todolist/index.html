@@ -753,7 +753,20 @@
         id="auth-password-input" 
         placeholder="비밀번호 입력" 
         class="input-field input-auth"
+        inputmode="numeric"
+        pattern="[0-9]*"
       />
+      
+      <!-- 
+      입력모드를 숫자로 수정함. 잘 안되는 경우 아래 코드로 다시 수정할 것
+      <input 
+        type="password" 
+        id="auth-password-input" 
+        placeholder="비밀번호 입력" 
+        class="input-field input-auth"
+      /> -->
+
+
       <p id="auth-error-msg" class="error-msg is-hidden">비밀번호가 올바르지 않습니다.</p>
 
       <button id="auth-submit-btn" class="btn-base btn-primary btn-full">
