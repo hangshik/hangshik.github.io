@@ -65,7 +65,7 @@
             --border-color: #374151;
         }
 
-        /* DB 색상 클래스 */
+        /* DB 및 라벨 색상 클래스 */
         .bg-blue-500 { background-color: #3b82f6 !important; color: #fff !important; }
         .bg-red-500 { background-color: #ef4444 !important; color: #fff !important; }
         .bg-green-500 { background-color: #009630 !important; color: #fff !important; }
@@ -73,6 +73,15 @@
         .bg-pink-500 { background-color: #ec4899 !important; color: #fff !important; }
         .bg-indigo-500 { background-color: #3135ec !important; color: #fff !important; }
         .bg-purple-500 { background-color: #a955f7ce !important; color: #fff !important; }
+
+        /* 글자 색상 클래스 (날짜용) */
+        .text-color-bg-blue-500 { color: #3b82f6 !important; }
+        .text-color-bg-red-500 { color: #ef4444 !important; }
+        .text-color-bg-green-500 { color: #009630 !important; }
+        .text-color-bg-yellow-500 { color: #d97706 !important; }
+        .text-color-bg-pink-500 { color: #ec4899 !important; }
+        .text-color-bg-indigo-500 { color: #3135ec !important; }
+        .text-color-bg-purple-500 { color: #9333ea !important; }
 
         /* PC (기본) */
         html {
@@ -374,7 +383,7 @@
             max-height: 85vh; overflow-y: auto; box-sizing: border-box;
         }
         
-        #settingsModal .modal-content {
+        #settingsModal .modal-content, #allEventsModal .modal-content {
             max-width: 700px;
         }
 
@@ -413,14 +422,15 @@
 
         /* 날짜 입력 피커 및 폰트 크기 조정 */
         #eventStartDate::-webkit-calendar-picker-indicator,
-        #eventEndDate::-webkit-calendar-picker-indicator {
+        #eventEndDate::-webkit-calendar-picker-indicator,
+        #filterStartDate::-webkit-calendar-picker-indicator,
+        #filterEndDate::-webkit-calendar-picker-indicator {
             cursor: pointer;
-            transform: scale(1.5);
-            margin-right: 4px;
+            transform: scale(1.3);
+            margin-right: 2px;
         }
-        #eventStartDate, #eventEndDate {
-            zoom: 1.5;
-            font-size: 0.75rem !important;
+        #eventStartDate, #eventEndDate, #filterStartDate, #filterEndDate {
+            font-size: 0.8rem !important;
         }
 
         .modal-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 1.25rem; }
@@ -446,7 +456,7 @@
             width: 1.35rem; height: 1.35rem; border-radius: 50%; cursor: pointer;
             border: 2px solid transparent; outline: 2px solid transparent; outline-offset: 1px;
         }
-        .color-circle.active { outline-color: var(--primary); }
+        .color-circle.active { outline-color: var(--primary); transform: scale(1.1); }
 
         .radio-group { display: flex; flex-direction: column; gap: 0.5rem; }
         .radio-group.row { flex-direction: row; gap: 1.25rem; }
@@ -460,7 +470,12 @@
             transition: border-color 0.15s, transform 0.15s, opacity 0.15s;
         }
         .day-event-item:hover { background-color: var(--bg-hover); }
+        
         .day-event-color { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+        
+        /* 전체 일정 목록 색상 원 (20px 크기) */
+        .day-event-color-large { width: 20px; height: 20px; border-radius: 50%; flex-shrink: 0; }
+
         .day-event-title { font-size: 0.825rem; font-weight: 500; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
         /* 모바일 날짜 클릭용 일정 추가 버튼: PC에서는 표시하지 않음 */
@@ -515,7 +530,7 @@
             <div class="header-controls">
                 <div class="divider"></div>
                 <button onclick="openSettingsModal()" class="btn-icon" title="달력 설정"><i class="fa-solid fa-gear"></i></button>
-                <button onclick="openEventModal()" class="btn-add" title="일정 추가"><i class="fa-solid fa-plus"></i></button>
+                <button onclick="openAllEventsModal()" class="btn-add" title="전체 일정 목록"><i class="fa-solid fa-list"></i></button>
             </div>
         </header>
 
@@ -625,6 +640,40 @@
         </div>
     </div>
 
+    <!-- 전체 일정 목록 모달 -->
+    <div id="allEventsModal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <div class="modal-header-flex">
+                <h3 class="modal-title">전체 일정 목록</h3>
+                <div class="modal-actions">
+                    <button onclick="downloadEventsExcel()" class="btn-primary" style="background-color: #10b981; display: inline-flex; align-items: center; gap: 0.3rem;" title="엑셀로 다운로드">
+                        <i class="fa-solid fa-file-excel"></i> 엑셀 다운로드
+                    </button>
+                    <button onclick="closeModal('allEventsModal')" class="btn-default">닫기</button>
+                </div>
+            </div>
+
+            <!-- 라벨 색상 필터 (중복 선택 가능) -->
+            <div class="form-group">
+                <label class="form-label">라벨 색상 필터 (중복 선택 가능)</label>
+                <div class="color-picker" id="allEventsColorPicker" style="flex-wrap: wrap; gap: 0.75rem; padding: 0.25rem 0;"></div>
+            </div>
+
+            <!-- 조회 기간 설정과 시작일, 종료일을 모두 한 줄로 배치 -->
+<div class="form-group" style="background: var(--bg-panel); padding: 0.45rem 0.6rem; border-radius: var(--radius-md); border: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between; flex-wrap: nowrap;">
+    <span style="font-size: 0.8rem; font-weight: bold; color: var(--text-main); white-space: nowrap; flex-shrink: 0;">조회 기간 설정</span>
+    <div style="display: flex; gap: 10px; align-items: center;">
+        <input type="date" id="filterStartDate" class="form-control" onclick="this.showPicker()" onchange="renderAllEventsList()" style="padding: 0.3rem 0.35rem; font-size: 0.75rem !important;">
+        <span style="font-size:0.8rem; font-weight:bold; flex-shrink: 0;">~</span>
+        <input type="date" id="filterEndDate" class="form-control" onclick="this.showPicker()" onchange="renderAllEventsList()" style="padding: 0.3rem 0.35rem; font-size: 0.75rem !important;">
+    </div>
+</div>
+
+            <!-- 일정 목록 출력 영역 -->
+            <ul id="allEventsList" class="day-event-list" style="max-height: 45vh; overflow-y: auto; margin-top: 0.75rem;"></ul>
+        </div>
+    </div>
+
     <div id="settingsModal" class="modal-overlay hidden">
         <div class="modal-content">
             <h3 class="modal-title" style="margin-bottom: 1rem;">달력 설정</h3>
@@ -670,7 +719,7 @@
         <div class="modal-content">
             <h3 class="modal-title" style="margin-bottom: 1rem;">기념일 및 반복 일정</h3>
             <ul id="anniversaryList" class="day-event-list" style="max-height: 50vh; overflow-y: auto; margin-bottom: 1rem;"></ul>
-            <div class="modal-footer"><div class="modal-actions"><button onclick="closeModal('anniversaryModal')" class="btn-default">뒤로가기</button></div></div>
+            <div class="modal-footer"><div class="modal-actions"><button onclick="closeModal('anniversaryModal', false, true)" class="btn-default">뒤로가기</button></div></div>
         </div>
     </div>
 
@@ -698,8 +747,11 @@
         const TRASH_STORAGE_KEY = 'deleted_events_trash';
         const THREE_DAYS_MS = 3 * 24 * 60 * 60 * 1000;
         
-        const colors = ['bg-blue-500', 'bg-red-500', 'bg-green-500', 'bg-yellow-500', 'bg-pink-500', 'bg-indigo-500'];
-        const recurrenceText = { 'daily': '매일', 'weekly': '매주', 'monthly': '매월', 'yearly': '매년 (양력)', 'yearly_lunar': '매년 (음력)' };
+        // 2번째 빨강(bg-red-500)과 3번째 녹색(bg-green-500)의 위치를 교환
+        const allColors = ['bg-blue-500', 'bg-green-500', 'bg-red-500', 'bg-yellow-500', 'bg-pink-500', 'bg-indigo-500', 'bg-purple-500'];
+        let selectedFilterColors = new Set(['bg-blue-500']); 
+
+        const weekDayNames = ['일', '월', '화', '수', '목', '금', '토'];
 
         let holidayCache = {};
 
@@ -908,6 +960,13 @@
             return `${y}-${m}-${d}`;
         }
 
+        function formatShortDateWithDay(dateObj) {
+            const m = dateObj.getMonth() + 1;
+            const day = dateObj.getDate();
+            const dayName = weekDayNames[dateObj.getDay()];
+            return `${m}/${day}(${dayName})`;
+        }
+
         function getTodayStr() {
             return formatDateToStr(new Date());
         }
@@ -990,7 +1049,7 @@
         }
 
         window.addEventListener('popstate', (e) => {
-            const allModals = ['eventModal', 'yearModal', 'monthModal', 'dayViewModal', 'settingsModal', 'anniversaryModal'];
+            const allModals = ['eventModal', 'yearModal', 'monthModal', 'dayViewModal', 'settingsModal', 'anniversaryModal', 'allEventsModal'];
             let topModal = activeModalsStack.pop();
             if (topModal) {
                 closeModal(topModal, true);
@@ -1073,7 +1132,7 @@
 
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
-                const visibleModals = ['eventModal', 'yearModal', 'monthModal', 'dayViewModal', 'settingsModal', 'anniversaryModal'];
+                const visibleModals = ['eventModal', 'yearModal', 'monthModal', 'dayViewModal', 'settingsModal', 'anniversaryModal', 'allEventsModal'];
                 visibleModals.forEach(id => closeModal(id));
             } else if (e.key === 'Enter') {
                 const eventModal = document.getElementById('eventModal');
@@ -1450,6 +1509,161 @@
             }
         }
 
+        /* --- 전체 일정 목록 모달 제어 함수들 --- */
+        function openAllEventsModal() {
+            renderAllEventsColorPicker();
+            
+            const today = new Date();
+            const threeMonthsLater = new Date(today.getFullYear(), today.getMonth() + 3, today.getDate());
+
+            document.getElementById('filterStartDate').value = formatDateToStr(today);
+            document.getElementById('filterEndDate').value = formatDateToStr(threeMonthsLater);
+
+            renderAllEventsList();
+            openModalUI('allEventsModal');
+        }
+
+        function renderAllEventsColorPicker() {
+            const container = document.getElementById('allEventsColorPicker');
+            container.innerHTML = allColors.map(c => {
+                const isActive = selectedFilterColors.has(c);
+                return `<div onclick="toggleFilterColor('${c}')" class="color-circle ${c} ${isActive ? 'active' : ''}" id="filter-color-${c}" title="${c}" style="${!isActive ? 'opacity: 0.35;' : ''}"></div>`;
+            }).join('');
+        }
+
+        function toggleFilterColor(color) {
+            if (selectedFilterColors.has(color)) {
+                selectedFilterColors.delete(color);
+            } else {
+                selectedFilterColors.add(color);
+            }
+            renderAllEventsColorPicker();
+            renderAllEventsList();
+        }
+
+        function getFilteredAndSortedEvents() {
+            const startStr = document.getElementById('filterStartDate').value || getTodayStr();
+            const endStr = document.getElementById('filterEndDate').value || getTodayStr();
+
+            const startDateObj = parseLocalDate(startStr);
+            const endDateObj = parseLocalDate(endStr);
+
+            let results = [];
+
+            let curr = new Date(startDateObj);
+            while (curr <= endDateObj) {
+                const dayEvents = getEventsForDate(curr);
+                
+                dayEvents.forEach(evt => {
+                    if (!selectedFilterColors.has(evt.color)) return;
+
+                    const isMulti = (evt.recurrence === 'none' && evt.startDate !== evt.endDate);
+                    if (isMulti) {
+                        const evtStart = parseLocalDate(evt.startDate).getTime();
+                        if (curr.getTime() !== evtStart && curr.getTime() !== startDateObj.getTime()) {
+                            return; 
+                        }
+                    }
+
+                    results.push({
+                        ...evt,
+                        computedDateObj: new Date(curr),
+                        computedDateStr: formatDateToStr(curr)
+                    });
+                });
+
+                curr.setDate(curr.getDate() + 1);
+            }
+
+            const seenKeys = new Set();
+            const uniqueResults = [];
+
+            results.forEach(item => {
+                const key = item.recurrence === 'none' ? `${item.id}_${item.startDate}` : `${item.id}_${item.computedDateStr}`;
+                if (!seenKeys.has(key)) {
+                    seenKeys.add(key);
+                    uniqueResults.push(item);
+                }
+            });
+
+            uniqueResults.sort((a, b) => a.computedDateObj.getTime() - b.computedDateObj.getTime());
+            return uniqueResults;
+        }
+
+        function renderAllEventsList() {
+            const ul = document.getElementById('allEventsList');
+            const filtered = getFilteredAndSortedEvents();
+
+            if (filtered.length === 0) {
+                ul.innerHTML = '<li style="text-align:center; padding:1.5rem; color:var(--text-muted);">조건에 맞는 일정이 없습니다.</li>';
+                return;
+            }
+
+            ul.innerHTML = filtered.map(evt => {
+                let modalTitle = evt.title || '';
+                if (modalTitle.startsWith('출 ')) {
+                    modalTitle = `<span style="color: #ff6347; font-weight: bold;">출</span>` + modalTitle.slice(1);
+                }
+                if (modalTitle.startsWith('제출 ')) {
+                    modalTitle = `<span style="color: #ff6347; font-weight: bold;">제출</span>` + modalTitle.slice(2);
+                }
+
+                let formattedDate = formatShortDateWithDay(evt.computedDateObj);
+                if (evt.recurrence === 'none' && evt.startDate !== evt.endDate) {
+                    formattedDate += ` ~ ${formatShortDateWithDay(parseLocalDate(evt.endDate))}`;
+                }
+
+                const textColorClass = `text-color-${evt.color}`;
+
+                return `
+                    <li class="day-event-item" style="justify-content: space-between; align-items: center;" onclick="closeModal('allEventsModal', false, true); openEventModal('${evt.id}')">
+                        <div style="display:flex; align-items:center; gap:0.75rem; overflow:hidden; flex:1;">
+                            <div class="day-event-color-large ${evt.color}"></div>
+                            <div style="display:flex; align-items:center; gap:0.6rem; overflow:hidden; flex:1; white-space:nowrap;">
+                                <span class="${textColorClass}" style="font-weight:bold; font-size:0.85rem; flex-shrink:0;">${formattedDate}</span>
+                                <span class="day-event-title" style="font-weight:500;">${modalTitle}</span>
+                            </div>
+                        </div>
+                        <i class="fa-solid fa-chevron-right" style="color:var(--text-muted); font-size:0.75rem; flex-shrink:0; margin-left:0.5rem;"></i>
+                    </li>
+                `;
+            }).join('');
+        }
+
+        /* --- 엑셀(CSV) 다운로드 기능 --- */
+        function downloadEventsExcel() {
+            const filtered = getFilteredAndSortedEvents();
+            if (filtered.length === 0) {
+                return showToast('다운로드할 일정 데이터가 없습니다.');
+            }
+
+            let csvContent = '\uFEFF'; 
+            csvContent += '날짜,시작일,종료일,일정제목,메모,반복설정\n';
+
+            filtered.forEach(evt => {
+                const displayDate = evt.computedDateStr;
+                const sDate = evt.startDate || '';
+                const eDate = evt.endDate || '';
+                const title = `"${(evt.title || '').replace(/"/g, '""')}"`;
+                const memo = `"${(evt.memo || '').replace(/"/g, '""')}"`;
+                const recurrence = `"${evt.recurrence || 'none'}"`;
+                
+                csvContent += `${displayDate},${sDate},${eDate},${title},${memo},${recurrence}\n`;
+            });
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            const todayStr = getTodayStr().replace(/-/g, '');
+            a.download = `일정목록_${todayStr}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            showToast('엑셀 파일이 다운로드 되었습니다.');
+        }
+
         /* --- Day View (상세 목록 모달) --- */
         function editEventFromDayView(id) {
             closeModal('dayViewModal', false, true);
@@ -1792,11 +2006,11 @@
         }
 
         function renderColorPicker() {
-            document.getElementById('colorPicker').innerHTML = colors.map(c => `<div onclick="selectColor('${c}')" class="color-circle ${c}" id="color-${c}"></div>`).join('');
+            document.getElementById('colorPicker').innerHTML = allColors.slice(0, 6).map(c => `<div onclick="selectColor('${c}')" class="color-circle ${c}" id="color-${c}"></div>`).join('');
         }
         function selectColor(color) {
             document.getElementById('eventColor').value = color;
-            colors.forEach(c => {
+            allColors.slice(0, 6).forEach(c => {
                 const el = document.getElementById(`color-${c}`);
                 if(el) { if(c === color) el.classList.add('active'); else el.classList.remove('active'); }
             });
