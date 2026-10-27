@@ -1,0 +1,1137 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VocaBoost - 스마트 영어 단어장</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            50: '#f0f9ff',
+                            100: '#e0f2fe',
+                            500: '#0284c7',
+                            600: '#0284c7',
+                            700: '#0369a1',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Alpine.js -->
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <!-- Canvas Confetti for Quiz celebration -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Pretendard:wght@300;400;500;600;700&display=swap');
+        body {
+            font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+        }
+
+        /* 3D Flip Card Effect */
+        .perspective-1000 {
+            perspective: 1000px;
+        }
+        .transform-style-3d {
+            transform-style: preserve-3d;
+            transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .backface-hidden {
+            backface-visibility: hidden;
+            -webkit-backface-visibility: hidden;
+        }
+        .rotate-y-180 {
+            transform: rotateY(180deg);
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(156, 163, 175, 0.5);
+            border-radius: 9999px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(107, 114, 128, 0.8);
+        }
+    </style>
+</head>
+<body class="bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 min-h-screen transition-colors duration-200"
+      x-data="vocaApp()" 
+      x-init="initApp()">
+
+    <!-- Header / Navbar -->
+    <header class="sticky top-0 z-40 bg-white/80 dark:bg-slate-800/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-700">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <!-- Logo & Title -->
+            <div class="flex items-center space-x-3 cursor-pointer" @click="activeTab = 'list'">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center text-white shadow-md shadow-blue-500/20">
+                    <i data-lucide="book-open" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-xl tracking-tight bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-400 bg-clip-text text-transparent">
+                        VocaBoost
+                    </h1>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 font-medium">스마트 영어 단어장</p>
+                </div>
+            </div>
+
+            <!-- Nav Tabs -->
+            <nav class="hidden md:flex items-center space-x-1 bg-slate-100 dark:bg-slate-700/50 p-1 rounded-xl">
+                <button @click="activeTab = 'list'" :class="activeTab === 'list' ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-sm' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'" class="flex items-center space-x-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-all">
+                    <i data-lucide="list" class="w-4 h-4"></i>
+                    <span>단어 목록</span>
+                </button>
+                <button @click="startFlashcard()" :class="activeTab === 'flashcard' ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-sm' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'" class="flex items-center space-x-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-all">
+                    <i data-lucide="layers" class="w-4 h-4"></i>
+                    <span>플래시카드</span>
+                </button>
+                <button @click="startQuiz()" :class="activeTab === 'quiz' ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-sm' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'" class="flex items-center space-x-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-all">
+                    <i data-lucide="help-circle" class="w-4 h-4"></i>
+                    <span>단어 퀴즈</span>
+                </button>
+                <button @click="startMatchGame()" :class="activeTab === 'match' ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-sm' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'" class="flex items-center space-x-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-all">
+                    <i data-lucide="gamepad-2" class="w-4 h-4"></i>
+                    <span>짝맞추기</span>
+                </button>
+                <button @click="activeTab = 'stats'" :class="activeTab === 'stats' ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-sm' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'" class="flex items-center space-x-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-all">
+                    <i data-lucide="bar-chart-3" class="w-4 h-4"></i>
+                    <span>학습 통계</span>
+                </button>
+            </nav>
+
+            <!-- Actions Right -->
+            <div class="flex items-center space-x-2">
+                <!-- Add Word Button -->
+                <button @click="openModal()" class="flex items-center space-x-1 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white px-3 py-2 rounded-xl text-sm font-medium shadow-md shadow-blue-500/20 transition-all">
+                    <i data-lucide="plus" class="w-4 h-4"></i>
+                    <span class="hidden sm:inline">단어 추가</span>
+                </button>
+
+                <!-- Dark Mode Toggle -->
+                <button @click="toggleDarkMode()" class="p-2 rounded-xl text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                    <i x-show="!darkMode" data-lucide="moon" class="w-5 h-5"></i>
+                    <i x-show="darkMode" data-lucide="sun" class="w-5 h-5"></i>
+                </button>
+
+                <!-- Data Backup Menu -->
+                <div class="relative" x-data="{ open: false }">
+                    <button @click="open = !open" class="p-2 rounded-xl text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                        <i data-lucide="more-vertical" class="w-5 h-5"></i>
+                    </button>
+                    <div x-show="open" @click.outside="open = false" x-transition 
+                         class="absolute right-0 mt-2 w-48 bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-700 py-1 z-50">
+                        <button @click="exportData(); open = false" class="w-full text-left px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/50 flex items-center space-x-2">
+                            <i data-lucide="download" class="w-4 h-4"></i>
+                            <span>데이터 내보내기</span>
+                        </button>
+                        <label class="w-full text-left px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/50 flex items-center space-x-2 cursor-pointer">
+                            <i data-lucide="upload" class="w-4 h-4"></i>
+                            <span>데이터 가져오기</span>
+                            <input type="file" @change="importData($event); open = false" class="hidden" accept=".json">
+                        </label>
+                        <hr class="my-1 border-slate-100 dark:border-slate-700">
+                        <button @click="resetData(); open = false" class="w-full text-left px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center space-x-2">
+                            <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+                            <span>기본 데이터로 초기화</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Mobile Bottom Navigation Bar -->
+    <nav class="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/90 dark:bg-slate-800/90 backdrop-blur-lg border-t border-slate-200 dark:border-slate-700 px-2 py-1 flex justify-around">
+        <button @click="activeTab = 'list'" :class="activeTab === 'list' ? 'text-blue-600 dark:text-blue-400' : 'text-slate-500 dark:text-slate-400'" class="flex flex-col items-center py-1 px-2 text-xs font-medium">
+            <i data-lucide="list" class="w-5 h-5"></i>
+            <span class="mt-0.5">목록</span>
+        </button>
+        <button @click="startFlashcard()" :class="activeTab === 'flashcard' ? 'text-blue-600 dark:text-blue-400' : 'text-slate-500 dark:text-slate-400'" class="flex flex-col items-center py-1 px-2 text-xs font-medium">
+            <i data-lucide="layers" class="w-5 h-5"></i>
+            <span class="mt-0.5">카드</span>
+        </button>
+        <button @click="startQuiz()" :class="activeTab === 'quiz' ? 'text-blue-600 dark:text-blue-400' : 'text-slate-500 dark:text-slate-400'" class="flex flex-col items-center py-1 px-2 text-xs font-medium">
+            <i data-lucide="help-circle" class="w-5 h-5"></i>
+            <span class="mt-0.5">퀴즈</span>
+        </button>
+        <button @click="startMatchGame()" :class="activeTab === 'match' ? 'text-blue-600 dark:text-blue-400' : 'text-slate-500 dark:text-slate-400'" class="flex flex-col items-center py-1 px-2 text-xs font-medium">
+            <i data-lucide="gamepad-2" class="w-5 h-5"></i>
+            <span class="mt-0.5">짝맞추기</span>
+        </button>
+        <button @click="activeTab = 'stats'" :class="activeTab === 'stats' ? 'text-blue-600 dark:text-blue-400' : 'text-slate-500 dark:text-slate-400'" class="flex flex-col items-center py-1 px-2 text-xs font-medium">
+            <i data-lucide="bar-chart-3" class="w-5 h-5"></i>
+            <span class="mt-0.5">통계</span>
+        </button>
+    </nav>
+
+    <!-- Toast Notification -->
+    <div x-show="toast.show" x-transition 
+         class="fixed bottom-20 md:bottom-6 right-6 z-50 bg-slate-900 text-white dark:bg-white dark:text-slate-900 px-4 py-3 rounded-xl shadow-2xl flex items-center space-x-3 text-sm font-medium"
+         style="display: none;">
+        <i data-lucide="check-circle-2" class="w-5 h-5 text-emerald-400 dark:text-emerald-600"></i>
+        <span x-text="toast.message"></span>
+    </div>
+
+    <!-- Main Container -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-24 md:pb-12">
+
+        <!-- TODAY'S DASHBOARD BANNER -->
+        <div class="mb-6 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 rounded-2xl p-6 text-white shadow-xl relative overflow-hidden">
+            <div class="absolute -right-10 -bottom-10 w-48 h-48 bg-white/10 rounded-full blur-2xl pointer-events-none"></div>
+            <div class="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                    <div class="flex items-center space-x-2 text-blue-200 text-sm font-medium mb-1">
+                        <i data-lucide="flame" class="w-4 h-4 text-orange-300"></i>
+                        <span>연속 학습 <strong class="text-white text-base" x-text="streak"></strong>일째 달성 중!</span>
+                    </div>
+                    <h2 class="text-2xl font-bold">오늘의 공부 목표</h2>
+                    <p class="text-blue-100 text-sm mt-1">오늘 복습한 단어: <span class="font-bold text-white" x-text="todayReviewed"></span> / <span x-text="dailyGoal"></span>개</p>
+                </div>
+                <!-- Progress Bar -->
+                <div class="w-full md:w-64 bg-white/20 rounded-full p-1 backdrop-blur-sm">
+                    <div class="bg-amber-300 h-3 rounded-full transition-all duration-500" :style="`width: ${Math.min(100, (todayReviewed / dailyGoal) * 100)}%`"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 1: WORD LIST MANAGEMENT -->
+        <div x-show="activeTab === 'list'" x-transition>
+            <!-- Search & Filters Header -->
+            <div class="bg-white dark:bg-slate-800 rounded-2xl p-4 shadow-sm border border-slate-200/80 dark:border-slate-700/80 mb-6 space-y-4">
+                <div class="flex flex-col md:flex-row gap-3">
+                    <!-- Search Input -->
+                    <div class="relative flex-1">
+                        <i data-lucide="search" class="w-5 h-5 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                        <input type="text" x-model="searchQuery" placeholder="영어 단어 또는 한글 뜻 검색..." 
+                               class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+                    </div>
+
+                    <!-- Category Filter -->
+                    <select x-model="selectedCategory" class="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm font-medium">
+                        <option value="ALL">모든 카테고리</option>
+                        <template x-for="cat in categories" :key="cat">
+                            <option :value="cat" x-text="cat"></option>
+                        </template>
+                    </select>
+
+                    <!-- Status Filter -->
+                    <select x-model="selectedStatus" class="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm font-medium">
+                        <option value="ALL">전체 상태</option>
+                        <option value="LEARNING">학습 중 📖</option>
+                        <option value="MASTERED">암기 완료 ✅</option>
+                    </select>
+                </div>
+
+                <!-- Word Count Status -->
+                <div class="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 px-1">
+                    <span>총 <strong class="text-slate-800 dark:text-slate-200" x-text="filteredWords.length"></strong>개의 단어가 검색됨</span>
+                    <button @click="toggleSelectAllMastered()" class="text-blue-600 dark:text-blue-400 hover:underline">
+                        전체 상태 토글
+                    </button>
+                </div>
+            </div>
+
+            <!-- Empty State -->
+            <div x-show="filteredWords.length === 0" class="text-center py-16 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700">
+                <i data-lucide="book-x" class="w-12 h-12 mx-auto text-slate-400 mb-3"></i>
+                <h3 class="text-lg font-medium text-slate-700 dark:text-slate-300">검색된 단어가 없습니다</h3>
+                <p class="text-slate-500 dark:text-slate-400 text-sm mt-1">새 단어를 추가하거나 필터 조건을 변경해 보세요.</p>
+                <button @click="openModal()" class="mt-4 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-xl hover:bg-blue-700">
+                    + 새 단어 추가
+                </button>
+            </div>
+
+            <!-- Words Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <template x-for="word in filteredWords" :key="word.id">
+                    <div class="bg-white dark:bg-slate-800 rounded-2xl p-5 border border-slate-200/80 dark:border-slate-700/80 hover:shadow-lg transition-all duration-200 relative group flex flex-col justify-between">
+                        <div>
+                            <!-- Header: Category & Status Badge -->
+                            <div class="flex items-center justify-between mb-3">
+                                <span class="text-xs px-2.5 py-1 rounded-lg font-medium bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-800" x-text="word.category"></span>
+                                <button @click="toggleMastered(word)" :class="word.mastered ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 border-emerald-200' : 'bg-slate-100 dark:bg-slate-700 text-slate-500 border-slate-200'" class="text-xs px-2.5 py-1 rounded-lg border flex items-center space-x-1 font-medium transition-colors">
+                                    <i data-lucide="check" class="w-3.5 h-3.5" x-show="word.mastered"></i>
+                                    <span x-text="word.mastered ? '암기 완료' : '학습 중'"></span>
+                                </button>
+                            </div>
+
+                            <!-- Word Title & IPA -->
+                            <div class="flex items-baseline space-x-2">
+                                <h3 class="text-xl font-bold text-slate-900 dark:text-white" x-text="word.term"></h3>
+                                <span class="text-xs text-slate-400 font-normal" x-text="word.ipa"></span>
+                                <button @click="speak(word.term)" class="text-blue-500 hover:text-blue-600 p-1 rounded-lg hover:bg-blue-50 dark:hover:bg-slate-700 transition-colors" title="발음 듣기">
+                                    <i data-lucide="volume-2" class="w-4 h-4"></i>
+                                </button>
+                            </div>
+
+                            <!-- Korean Meaning -->
+                            <p class="text-base font-medium text-slate-700 dark:text-slate-300 mt-1" x-text="word.meaning"></p>
+
+                            <!-- Example Sentence -->
+                            <div x-show="word.example" class="mt-3 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/50 text-xs text-slate-600 dark:text-slate-400 border border-slate-100 dark:border-slate-800">
+                                <p class="font-medium text-slate-800 dark:text-slate-300" x-text="word.example"></p>
+                                <p class="text-slate-500 mt-0.5" x-text="word.exampleMeaning"></p>
+                            </div>
+                        </div>
+
+                        <!-- Card Action Footer -->
+                        <div class="mt-4 pt-3 border-t border-slate-100 dark:border-slate-700/50 flex items-center justify-between text-xs text-slate-400">
+                            <span>복습 횟수: <strong x-text="word.reviewCount || 0"></strong>회</span>
+                            <div class="flex space-x-1">
+                                <button @click="openModal(word)" class="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 hover:text-blue-600">
+                                    <i data-lucide="edit-3" class="w-4 h-4"></i>
+                                </button>
+                                <button @click="deleteWord(word.id)" class="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 hover:text-red-600">
+                                    <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </div>
+
+        <!-- TAB 2: FLASHCARD MODE -->
+        <div x-show="activeTab === 'flashcard'" x-transition class="max-w-2xl mx-auto">
+            <div x-show="flashcardList.length === 0" class="text-center py-12 bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700">
+                <p class="text-slate-600 dark:text-slate-300">학습할 단어가 없습니다.</p>
+            </div>
+
+            <div x-show="flashcardList.length > 0">
+                <!-- Top Control Bar -->
+                <div class="flex items-center justify-between mb-4">
+                    <span class="text-sm font-medium text-slate-500 dark:text-slate-400">
+                        카드 <strong x-text="currentFlashIndex + 1"></strong> / <span x-text="flashcardList.length"></span>
+                    </span>
+                    <button @click="shuffleFlashcards()" class="flex items-center space-x-1 text-xs text-blue-600 dark:text-blue-400 font-medium px-3 py-1.5 rounded-xl bg-blue-50 dark:bg-blue-900/30">
+                        <i data-lucide="shuffle" class="w-3.5 h-3.5"></i>
+                        <span>카드 섞기</span>
+                    </button>
+                </div>
+
+                <!-- 3D Flip Card Container -->
+                <div class="w-full h-80 sm:h-96 perspective-1000 cursor-pointer select-none" @click="isFlipped = !isFlipped">
+                    <div class="w-full h-full transform-style-3d relative rounded-3xl shadow-xl transition-all duration-500" :class="{ 'rotate-y-180': isFlipped }">
+                        
+                        <!-- CARD FRONT -->
+                        <div class="absolute inset-0 backface-hidden bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-3xl p-8 flex flex-col justify-between items-center text-center">
+                            <div class="w-full flex justify-between items-center text-xs text-slate-400">
+                                <span class="px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-700 font-medium" x-text="currentWord?.category"></span>
+                                <span>터치하여 뜻 확인 🔄</span>
+                            </div>
+
+                            <div class="my-auto">
+                                <h2 class="text-4xl sm:text-5xl font-black text-slate-900 dark:text-white tracking-tight" x-text="currentWord?.term"></h2>
+                                <p class="text-sm text-slate-400 mt-2" x-text="currentWord?.ipa"></p>
+                                <button @click.stop="speak(currentWord?.term)" class="mt-4 p-3 rounded-full bg-blue-50 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 hover:scale-110 transition-transform">
+                                    <i data-lucide="volume-2" class="w-6 h-6"></i>
+                                </button>
+                            </div>
+
+                            <p class="text-xs text-slate-400">클릭하면 카드가 뒤집어집니다</p>
+                        </div>
+
+                        <!-- CARD BACK -->
+                        <div class="absolute inset-0 backface-hidden rotate-y-180 bg-gradient-to-br from-slate-900 to-indigo-950 text-white rounded-3xl p-8 flex flex-col justify-between items-center text-center border border-indigo-800">
+                            <div class="w-full flex justify-between items-center text-xs text-indigo-300">
+                                <span>한국어 뜻</span>
+                                <span>터치하여 단어 보기 🔄</span>
+                            </div>
+
+                            <div class="my-auto space-y-4">
+                                <h3 class="text-3xl font-bold text-amber-300" x-text="currentWord?.meaning"></h3>
+                                <div class="bg-white/10 backdrop-blur-md p-4 rounded-2xl text-sm max-w-md mx-auto border border-white/10 text-slate-200">
+                                    <p class="font-medium" x-text="currentWord?.example"></p>
+                                    <p class="text-xs text-slate-400 mt-1" x-text="currentWord?.exampleMeaning"></p>
+                                </div>
+                            </div>
+
+                            <p class="text-xs text-indigo-300/60">VocaBoost Flashcard</p>
+                        </div>
+
+                    </div>
+                </div>
+
+                <!-- Control Buttons -->
+                <div class="mt-6 flex items-center justify-between gap-3">
+                    <button @click="prevFlashcard()" class="flex-1 py-3 px-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl font-medium text-slate-700 dark:text-slate-200 shadow-sm hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center justify-center space-x-2">
+                        <i data-lucide="chevron-left" class="w-5 h-5"></i>
+                        <span>이전</span>
+                    </button>
+                    
+                    <button @click="markCurrentMastered()" class="py-3 px-5 rounded-2xl font-semibold text-white shadow-md transition-all flex items-center space-x-1" :class="currentWord?.mastered ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-slate-700 hover:bg-slate-800'">
+                        <i data-lucide="check-circle" class="w-5 h-5"></i>
+                        <span x-text="currentWord?.mastered ? '암기 완료됨' : '암기 완료 표시'"></span>
+                    </button>
+
+                    <button @click="nextFlashcard()" class="flex-1 py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-medium shadow-md shadow-blue-500/20 flex items-center justify-center space-x-2">
+                        <span>다음</span>
+                        <i data-lucide="chevron-right" class="w-5 h-5"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 3: QUIZ & TEST MODE -->
+        <div x-show="activeTab === 'quiz'" x-transition class="max-w-xl mx-auto">
+            <!-- Quiz Configuration view -->
+            <div x-show="!quizState.active && !quizState.finished" class="bg-white dark:bg-slate-800 rounded-3xl p-8 shadow-sm border border-slate-200 dark:border-slate-700 text-center">
+                <div class="w-16 h-16 bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                    <i data-lucide="brain-circuit" class="w-8 h-8"></i>
+                </div>
+                <h2 class="text-2xl font-bold mb-2">단어 테스트 시작</h2>
+                <p class="text-slate-500 dark:text-slate-400 text-sm mb-6">다양한 퀴즈 유형으로 암기 상태를 검증해 보세요.</p>
+
+                <!-- Quiz Mode Selection -->
+                <div class="space-y-3 mb-6 text-left">
+                    <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">퀴즈 유형 선택</label>
+                    <button @click="quizMode = 'mc'" :class="quizMode === 'mc' ? 'border-blue-500 bg-blue-50/50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400' : 'border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300'" class="w-full p-4 rounded-2xl border-2 font-medium flex items-center justify-between">
+                        <div class="flex items-center space-x-3">
+                            <i data-lucide="list-checks" class="w-5 h-5"></i>
+                            <div class="text-left">
+                                <p class="font-bold text-sm">4지 선다 객관식</p>
+                                <p class="text-xs text-slate-400">알맞은 한국어 뜻을 선택합니다.</p>
+                            </div>
+                        </div>
+                        <i data-lucide="check-circle" x-show="quizMode === 'mc'" class="w-5 h-5"></i>
+                    </button>
+
+                    <button @click="quizMode = 'spelling'" :class="quizMode === 'spelling' ? 'border-blue-500 bg-blue-50/50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400' : 'border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300'" class="w-full p-4 rounded-2xl border-2 font-medium flex items-center justify-between">
+                        <div class="flex items-center space-x-3">
+                            <i data-lucide="keyboard" class="w-5 h-5"></i>
+                            <div class="text-left">
+                                <p class="font-bold text-sm">철자 직접 받아쓰기</p>
+                                <p class="text-xs text-slate-400">뜻을 보고 정확한 영단어를 타이핑합니다.</p>
+                            </div>
+                        </div>
+                        <i data-lucide="check-circle" x-show="quizMode === 'spelling'" class="w-5 h-5"></i>
+                    </button>
+                </div>
+
+                <button @click="startQuizSession()" class="w-full py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-2xl shadow-lg shadow-blue-500/25 transition-all">
+                    퀴즈 시작하기
+                </button>
+            </div>
+
+            <!-- Active Quiz View -->
+            <div x-show="quizState.active" class="bg-white dark:bg-slate-800 rounded-3xl p-6 shadow-md border border-slate-200 dark:border-slate-700">
+                <!-- Quiz Header -->
+                <div class="flex items-center justify-between mb-6">
+                    <span class="text-xs font-semibold px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
+                        문제 <span x-text="quizState.currentIndex + 1"></span> / <span x-text="quizState.total"></span>
+                    </span>
+                    <div class="text-xs font-bold text-blue-600 dark:text-blue-400">
+                        점수: <span x-text="quizState.score"></span>점
+                    </div>
+                </div>
+
+                <!-- Question Prompt -->
+                <div class="text-center my-6">
+                    <span class="text-xs text-slate-400 font-medium">다음 단어의 알맞은 뜻은 무엇일까요?</span>
+                    <h3 class="text-3xl font-extrabold text-slate-900 dark:text-white mt-2 mb-1" x-text="currentQuizQuestion?.term"></h3>
+                    <p class="text-xs text-slate-400" x-text="currentQuizQuestion?.ipa"></p>
+                    <button @click="speak(currentQuizQuestion?.term)" class="mt-2 text-blue-500 hover:text-blue-600 p-1.5 rounded-full hover:bg-blue-50 dark:hover:bg-slate-700">
+                        <i data-lucide="volume-2" class="w-5 h-5 mx-auto"></i>
+                    </button>
+                </div>
+
+                <!-- MC Options Mode -->
+                <div x-show="quizMode === 'mc'" class="space-y-3 mt-6">
+                    <template x-for="(option, idx) in quizState.options" :key="idx">
+                        <button @click="submitQuizAnswer(option)" 
+                                :disabled="quizState.answered"
+                                :class="{
+                                    'border-slate-200 dark:border-slate-700 hover:border-blue-400': !quizState.answered,
+                                    'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300': quizState.answered && option === currentQuizQuestion.meaning,
+                                    'border-red-500 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300': quizState.answered && quizState.selectedAnswer === option && option !== currentQuizQuestion.meaning
+                                }"
+                                class="w-full p-4 rounded-2xl border-2 text-left font-medium text-sm transition-all flex items-center justify-between">
+                            <span x-text="option"></span>
+                            <i data-lucide="check-circle" class="w-5 h-5 text-emerald-500" x-show="quizState.answered && option === currentQuizQuestion.meaning"></i>
+                        </button>
+                    </template>
+                </div>
+
+                <!-- Spelling Mode -->
+                <div x-show="quizMode === 'spelling'" class="mt-6 space-y-4">
+                    <p class="text-center font-bold text-lg text-amber-600 dark:text-amber-400" x-text="currentQuizQuestion?.meaning"></p>
+                    <input type="text" x-model="quizState.spellingInput" @keydown.enter="submitSpellingAnswer()" :disabled="quizState.answered" placeholder="영단어를 입력하세요..." 
+                           class="w-full px-4 py-3 text-center text-xl font-bold rounded-2xl border-2 border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 focus:outline-none focus:border-blue-500">
+                    <button x-show="!quizState.answered" @click="submitSpellingAnswer()" class="w-full py-3 bg-blue-600 text-white font-semibold rounded-2xl shadow-md hover:bg-blue-700">
+                        정답 제출
+                    </button>
+                </div>
+
+                <!-- Next Question Action Bar -->
+                <div x-show="quizState.answered" class="mt-6 pt-4 border-t border-slate-100 dark:border-slate-700 flex justify-end">
+                    <button @click="nextQuizQuestion()" class="px-6 py-2.5 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 flex items-center space-x-1">
+                        <span>다음 문제</span>
+                        <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Quiz Result Summary -->
+            <div x-show="quizState.finished" class="bg-white dark:bg-slate-800 rounded-3xl p-8 shadow-md border border-slate-200 dark:border-slate-700 text-center">
+                <div class="w-20 h-20 bg-amber-100 dark:bg-amber-900/30 text-amber-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i data-lucide="trophy" class="w-10 h-10"></i>
+                </div>
+                <h2 class="text-2xl font-extrabold mb-1">퀴즈 완료!</h2>
+                <p class="text-slate-500 dark:text-slate-400 text-sm mb-6">수고하셨습니다. 학습 결과를 확인하세요.</p>
+
+                <div class="bg-slate-50 dark:bg-slate-900 rounded-2xl p-6 mb-6 grid grid-cols-2 gap-4">
+                    <div>
+                        <span class="text-xs text-slate-400">최종 점수</span>
+                        <p class="text-3xl font-black text-blue-600 dark:text-blue-400" x-text="`${quizState.score}점`"></p>
+                    </div>
+                    <div>
+                        <span class="text-xs text-slate-400">맞춘 개수</span>
+                        <p class="text-3xl font-black text-emerald-600 dark:text-emerald-400" x-text="`${quizState.correctCount} / ${quizState.total}`"></p>
+                    </div>
+                </div>
+
+                <button @click="startQuiz()" class="w-full py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-2xl shadow-lg transition-all">
+                    다시 시도하기
+                </button>
+            </div>
+        </div>
+
+        <!-- TAB 4: MATCHING GAME -->
+        <div x-show="activeTab === 'match'" x-transition class="max-w-3xl mx-auto">
+            <!-- Game Start View -->
+            <div x-show="!matchGame.active && !matchGame.finished" class="bg-white dark:bg-slate-800 rounded-3xl p-8 shadow-sm border border-slate-200 dark:border-slate-700 text-center">
+                <div class="w-16 h-16 bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-400 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                    <i data-lucide="gamepad-2" class="w-8 h-8"></i>
+                </div>
+                <h2 class="text-2xl font-bold mb-2">단어 짝맞추기 게임</h2>
+                <p class="text-slate-500 dark:text-slate-400 text-sm mb-6">영단어 카드와 한글 뜻 카드를 빠르게 매칭시켜 보세요!</p>
+                <button @click="startMatchGameSession()" class="px-8 py-3.5 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-2xl shadow-lg shadow-purple-500/25 transition-all">
+                    게임 시작
+                </button>
+            </div>
+
+            <!-- Active Match Game -->
+            <div x-show="matchGame.active">
+                <!-- Game Header Status Bar -->
+                <div class="flex items-center justify-between mb-4 bg-white dark:bg-slate-800 px-6 py-3 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700">
+                    <div class="flex items-center space-x-2 text-slate-600 dark:text-slate-300 font-medium text-sm">
+                        <i data-lucide="timer" class="w-4 h-4 text-purple-500"></i>
+                        <span>시간: <strong class="text-slate-900 dark:text-white" x-text="matchGame.timer"></strong>초</span>
+                    </div>
+                    <div class="text-sm font-medium text-slate-600 dark:text-slate-300">
+                        남은 쌍: <strong class="text-purple-600 dark:text-purple-400" x-text="matchGame.pairsLeft"></strong>
+                    </div>
+                </div>
+
+                <!-- Cards Grid (4x3 layout for 6 pairs) -->
+                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                    <template x-for="(card, idx) in matchGame.cards" :key="idx">
+                        <button @click="selectMatchCard(card)" 
+                                :disabled="card.matched"
+                                :class="{
+                                    'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 hover:border-purple-400': !card.selected && !card.matched,
+                                    'bg-purple-600 text-white border-purple-600 shadow-md scale-95': card.selected,
+                                    'opacity-0 pointer-events-none transition-opacity duration-300': card.matched
+                                }"
+                                class="h-28 p-3 rounded-2xl border-2 font-bold text-sm sm:text-base flex items-center justify-center text-center transition-all">
+                            <span x-text="card.text"></span>
+                        </button>
+                    </template>
+                </div>
+            </div>
+
+            <!-- Match Game Result -->
+            <div x-show="matchGame.finished" class="bg-white dark:bg-slate-800 rounded-3xl p-8 shadow-md border border-slate-200 dark:border-slate-700 text-center">
+                <div class="w-20 h-20 bg-purple-100 dark:bg-purple-900/40 text-purple-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i data-lucide="party-popper" class="w-10 h-10"></i>
+                </div>
+                <h2 class="text-2xl font-extrabold mb-2">클리어 성공!</h2>
+                <p class="text-slate-500 dark:text-slate-400 text-sm mb-6">모든 단어의 짝을 찾아냈습니다.</p>
+
+                <div class="bg-purple-50 dark:bg-purple-900/20 rounded-2xl p-6 mb-6">
+                    <span class="text-xs text-slate-400">총 소요 시간</span>
+                    <p class="text-4xl font-black text-purple-600 dark:text-purple-400" x-text="`${matchGame.timer}초`"></p>
+                </div>
+
+                <button @click="startMatchGameSession()" class="w-full py-3.5 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-2xl shadow-lg transition-all">
+                    한 번 더 하기
+                </button>
+            </div>
+        </div>
+
+        <!-- TAB 5: LEARNING STATS -->
+        <div x-show="activeTab === 'stats'" x-transition class="max-w-4xl mx-auto space-y-6">
+            <h2 class="text-xl font-bold">학습 통계 & 리포트</h2>
+
+            <!-- Stat Cards Overview -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <div class="bg-white dark:bg-slate-800 rounded-2xl p-5 border border-slate-200/80 dark:border-slate-700/80">
+                    <span class="text-xs text-slate-400 font-medium">전체 단어 수</span>
+                    <p class="text-2xl font-black text-slate-900 dark:text-white mt-1" x-text="words.length"></p>
+                </div>
+
+                <div class="bg-white dark:bg-slate-800 rounded-2xl p-5 border border-slate-200/80 dark:border-slate-700/80">
+                    <span class="text-xs text-slate-400 font-medium">암기 완료</span>
+                    <p class="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1" x-text="masteredCount"></p>
+                </div>
+
+                <div class="bg-white dark:bg-slate-800 rounded-2xl p-5 border border-slate-200/80 dark:border-slate-700/80">
+                    <span class="text-xs text-slate-400 font-medium">암기 진행률</span>
+                    <p class="text-2xl font-black text-blue-600 dark:text-blue-400 mt-1" x-text="`${masteredPercentage}%`"></p>
+                </div>
+
+                <div class="bg-white dark:bg-slate-800 rounded-2xl p-5 border border-slate-200/80 dark:border-slate-700/80">
+                    <span class="text-xs text-slate-400 font-medium">학습 연속 일수</span>
+                    <p class="text-2xl font-black text-orange-500 mt-1" x-text="`${streak}일`"></p>
+                </div>
+            </div>
+
+            <!-- Mastered Progress Detail -->
+            <div class="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200/80 dark:border-slate-700/80">
+                <h3 class="font-bold text-base mb-3">전체 암기 상태</h3>
+                <div class="w-full bg-slate-100 dark:bg-slate-700 rounded-full h-4 overflow-hidden flex">
+                    <div class="bg-emerald-500 h-full transition-all duration-500" :style="`width: ${masteredPercentage}%`"></div>
+                    <div class="bg-blue-500 h-full transition-all duration-500" :style="`width: ${100 - masteredPercentage}%`"></div>
+                </div>
+                <div class="flex justify-between items-center text-xs text-slate-500 mt-2 font-medium">
+                    <span class="flex items-center"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500 mr-1.5"></span>암기 완료 (<span x-text="masteredCount"></span>)</span>
+                    <span class="flex items-center"><span class="w-2.5 h-2.5 rounded-full bg-blue-500 mr-1.5"></span>학습 필요 (<span x-text="words.length - masteredCount"></span>)</span>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- MODAL: ADD / EDIT WORD -->
+    <div x-show="showModal" x-transition class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm" style="display: none;">
+        <div @click.outside="closeModal()" class="bg-white dark:bg-slate-800 rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-100 dark:border-slate-700">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-bold" x-text="editingWord ? '단어 수정' : '새 단어 추가'"></h3>
+                <button @click="closeModal()" class="p-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-400">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <form @submit.prevent="saveWord()" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">영단어 (English Term) *</label>
+                    <input type="text" x-model="form.term" required placeholder="e.g., Apple" class="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">한글 뜻 (Korean Meaning) *</label>
+                    <input type="text" x-model="form.meaning" required placeholder="e.g., 사과" class="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">카테고리</label>
+                        <input type="text" x-model="form.category" placeholder="e.g., 일상, 비즈니스" class="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">발음 기호 (IPA)</label>
+                        <input type="text" x-model="form.ipa" placeholder="e.g., [æpl]" class="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">예문 (English Example)</label>
+                    <textarea x-model="form.example" rows="2" placeholder="e.g., An apple a day keeps the doctor away." class="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"></textarea>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">예문 해석 (Korean Translation)</label>
+                    <input type="text" x-model="form.exampleMeaning" placeholder="e.g., 매일 사과 한 개를 먹으면 의사가 필요 없다." class="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+                </div>
+
+                <div class="pt-2 flex justify-end space-x-2">
+                    <button type="button" @click="closeModal()" class="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-sm font-medium hover:bg-slate-100 dark:hover:bg-slate-700">
+                        취소
+                    </button>
+                    <button type="submit" class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-semibold shadow-md shadow-blue-500/20">
+                        저장하기
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- APP LOGIC -->
+    <script>
+        // Preset Vocab Data
+        const DEFAULT_VOCAB = [
+            { id: 1, term: 'Resilient', ipa: '[rɪˈzɪliənt]', meaning: '회복력 있는, 탄력 있는', category: 'TOEFL/TOEIC', example: 'She is remarkably resilient in the face of adversity.', exampleMeaning: '그녀는 역경에 맞서 놀라운 회복력을 보인다.', mastered: false, reviewCount: 2 },
+            { id: 2, term: 'Meticulous', ipa: '[məˈtɪkjələs]', meaning: '꼼꼼한, 세심한', category: 'TOEFL/TOEIC', example: 'He was meticulous about his appearance.', exampleMeaning: '그는 자신의 외모에 꼼꼼했다.', mastered: true, reviewCount: 5 },
+            { id: 3, term: 'Collaboration', ipa: '[kəˌlæbəˈreɪʃn]', meaning: '협력, 공동 작업', category: '비즈니스', example: 'The project was completed in collaboration with our international partners.', exampleMeaning: '그 프로젝트는 해외 파트너들과의 협력으로 완료되었다.', mastered: false, reviewCount: 1 },
+            { id: 4, term: 'Pragmatic', ipa: '[præɡˈmætɪk]', meaning: '실용적인, 실재적인', category: '학술', example: 'We need a pragmatic approach to solve this problem.', exampleMeaning: '이 문제를 해결하려면 실용적인 접근 방식이 필요합니다.', mastered: false, reviewCount: 0 },
+            { id: 5, term: 'Ubiquitous', ipa: '[juːˈbɪkwɪtəs]', meaning: '어디에나 존재하는', category: 'TOEFL/TOEIC', example: 'Smartphones have become ubiquitous in daily life.', exampleMeaning: '스마트폰은 일상생활에서 어디서나 볼 수 있게 되었다.', mastered: false, reviewCount: 3 },
+            { id: 6, term: 'Negotiation', ipa: '[nɪˌɡəʊʃiˈeɪʃn]', meaning: '협상, 절충', category: '비즈니스', example: 'The contract is currently under negotiation.', exampleMeaning: '그 계약은 현재 협상 중이다.', mastered: true, reviewCount: 4 },
+            { id: 7, term: 'Aesthetic', ipa: '[esˈθetɪk]', meaning: '미적인, 심미적인', category: '일상', example: 'The building has great aesthetic appeal.', exampleMeaning: '그 건물은 뛰어난 미적 매력을 가지고 있다.', mastered: false, reviewCount: 1 },
+            { id: 8, term: 'Empathy', ipa: '[ˈempəθi]', meaning: '공감, 감정이입', category: '일상', example: 'Showing empathy is key to good communication.', exampleMeaning: '공감을 표현하는 것은 원활한 소통의 열쇠이다.', mastered: false, reviewCount: 0 }
+        ];
+
+        function vocaApp() {
+            return {
+                darkMode: false,
+                activeTab: 'list', // 'list', 'flashcard', 'quiz', 'match', 'stats'
+                words: [],
+                searchQuery: '',
+                selectedCategory: 'ALL',
+                selectedStatus: 'ALL',
+
+                // Dashboard stats
+                streak: 1,
+                todayReviewed: 0,
+                dailyGoal: 10,
+
+                // Modal state
+                showModal: false,
+                editingWord: null,
+                form: {
+                    term: '',
+                    meaning: '',
+                    category: '일상',
+                    ipa: '',
+                    example: '',
+                    exampleMeaning: ''
+                },
+
+                // Flashcard State
+                flashcardList: [],
+                currentFlashIndex: 0,
+                isFlipped: false,
+
+                // Quiz State
+                quizMode: 'mc', // 'mc' or 'spelling'
+                quizState: {
+                    active: false,
+                    finished: false,
+                    currentIndex: 0,
+                    total: 5,
+                    score: 0,
+                    correctCount: 0,
+                    options: [],
+                    answered: false,
+                    selectedAnswer: null,
+                    spellingInput: ''
+                },
+
+                // Match Game State
+                matchGame: {
+                    active: false,
+                    finished: false,
+                    cards: [],
+                    selectedCards: [],
+                    timer: 0,
+                    interval: null,
+                    pairsLeft: 0
+                },
+
+                // Toast
+                toast: { show: false, message: '' },
+
+                initApp() {
+                    // Dark Mode setup
+                    this.darkMode = localStorage.getItem('voca_dark') === 'true';
+                    if (this.darkMode) document.documentElement.classList.add('dark');
+
+                    // Load Data
+                    const saved = localStorage.getItem('voca_words');
+                    this.words = saved ? JSON.parse(saved) : DEFAULT_VOCAB;
+
+                    const streakSaved = localStorage.getItem('voca_streak');
+                    this.streak = streakSaved ? parseInt(streakSaved) : 3;
+
+                    const reviewedSaved = localStorage.getItem('voca_today_reviewed');
+                    this.todayReviewed = reviewedSaved ? parseInt(reviewedSaved) : 4;
+
+                    this.$nextTick(() => lucide.createIcons());
+                },
+
+                toggleDarkMode() {
+                    this.darkMode = !this.darkMode;
+                    localStorage.setItem('voca_dark', this.darkMode);
+                    if (this.darkMode) {
+                        document.documentElement.classList.add('dark');
+                    } else {
+                        document.documentElement.classList.remove('dark');
+                    }
+                },
+
+                saveToStorage() {
+                    localStorage.setItem('voca_words', JSON.stringify(this.words));
+                },
+
+                showToast(msg) {
+                    this.toast.message = msg;
+                    this.toast.show = true;
+                    setTimeout(() => { this.toast.show = false; }, 2500);
+                },
+
+                // Categories Computed List
+                get categories() {
+                    const set = new Set(this.words.map(w => w.category).filter(Boolean));
+                    return Array.from(set);
+                },
+
+                // Filtered Words
+                get filteredWords() {
+                    return this.words.filter(w => {
+                        const matchQuery = w.term.toLowerCase().includes(this.searchQuery.toLowerCase()) || 
+                                           w.meaning.includes(this.searchQuery);
+                        const matchCat = this.selectedCategory === 'ALL' || w.category === this.selectedCategory;
+                        const matchStatus = this.selectedStatus === 'ALL' || 
+                                            (this.selectedStatus === 'MASTERED' && w.mastered) || 
+                                            (this.selectedStatus === 'LEARNING' && !w.mastered);
+                        return matchQuery && matchCat && matchStatus;
+                    });
+                },
+
+                get masteredCount() {
+                    return this.words.filter(w => w.mastered).length;
+                },
+
+                get masteredPercentage() {
+                    if (!this.words.length) return 0;
+                    return Math.round((this.masteredCount / this.words.length) * 100);
+                },
+
+                // Speech Synthesis (TTS)
+                speak(text) {
+                    if (!text) return;
+                    window.speechSynthesis.cancel();
+                    const utterance = new SpeechSynthesisUtterance(text);
+                    utterance.lang = 'en-US';
+                    utterance.rate = 0.9;
+                    window.speechSynthesis.speak(utterance);
+                },
+
+                // Word CRUD
+                openModal(word = null) {
+                    this.editingWord = word;
+                    if (word) {
+                        this.form = { ...word };
+                    } else {
+                        this.form = { term: '', meaning: '', category: '일상', ipa: '', example: '', exampleMeaning: '' };
+                    }
+                    this.showModal = true;
+                },
+
+                closeModal() {
+                    this.showModal = false;
+                },
+
+                saveWord() {
+                    if (this.editingWord) {
+                        const idx = this.words.findIndex(w => w.id === this.editingWord.id);
+                        if (idx !== -1) {
+                            this.words[idx] = { ...this.words[idx], ...this.form };
+                        }
+                        this.showToast('단어가 수정되었습니다.');
+                    } else {
+                        const newWord = {
+                            id: Date.now(),
+                            ...this.form,
+                            mastered: false,
+                            reviewCount: 0
+                        };
+                        this.words.unshift(newWord);
+                        this.showToast('새 단어가 추가되었습니다.');
+                    }
+                    this.saveToStorage();
+                    this.closeModal();
+                },
+
+                deleteWord(id) {
+                    if (confirm('이 단어를 삭제하시겠습니까?')) {
+                        this.words = this.words.filter(w => w.id !== id);
+                        this.saveToStorage();
+                        this.showToast('단어가 삭제되었습니다.');
+                    }
+                },
+
+                toggleMastered(word) {
+                    word.mastered = !word.mastered;
+                    this.saveToStorage();
+                },
+
+                toggleSelectAllMastered() {
+                    const allMastered = this.filteredWords.every(w => w.mastered);
+                    this.filteredWords.forEach(w => w.mastered = !allMastered);
+                    this.saveToStorage();
+                    this.showToast(allMastered ? '선택된 단어들이 학습 중으로 변경되었습니다.' : '선택된 단어들이 암기 완료 처리되었습니다.');
+                },
+
+                incrementReview(word) {
+                    word.reviewCount = (word.reviewCount || 0) + 1;
+                    this.todayReviewed++;
+                    localStorage.setItem('voca_today_reviewed', this.todayReviewed);
+                    this.saveToStorage();
+                },
+
+                // --- FLASHCARD MODE ---
+                startFlashcard() {
+                    this.activeTab = 'flashcard';
+                    this.flashcardList = [...this.filteredWords];
+                    this.currentFlashIndex = 0;
+                    this.isFlipped = false;
+                },
+
+                get currentWord() {
+                    return this.flashcardList[this.currentFlashIndex] || null;
+                },
+
+                nextFlashcard() {
+                    if (this.currentWord) this.incrementReview(this.currentWord);
+                    this.isFlipped = false;
+                    setTimeout(() => {
+                        this.currentFlashIndex = (this.currentFlashIndex + 1) % this.flashcardList.length;
+                    }, 150);
+                },
+
+                prevFlashcard() {
+                    this.isFlipped = false;
+                    setTimeout(() => {
+                        this.currentFlashIndex = (this.currentFlashIndex - 1 + this.flashcardList.length) % this.flashcardList.length;
+                    }, 150);
+                },
+
+                shuffleFlashcards() {
+                    this.flashcardList.sort(() => Math.random() - 0.5);
+                    this.currentFlashIndex = 0;
+                    this.isFlipped = false;
+                    this.showToast('카드가 무작위로 섞였습니다.');
+                },
+
+                markCurrentMastered() {
+                    if (this.currentWord) {
+                        this.currentWord.mastered = !this.currentWord.mastered;
+                        this.saveToStorage();
+                    }
+                },
+
+                // --- QUIZ MODE ---
+                startQuiz() {
+                    this.activeTab = 'quiz';
+                    this.quizState.active = false;
+                    this.quizState.finished = false;
+                },
+
+                startQuizSession() {
+                    if (this.words.length < 4) {
+                        alert('퀴즈를 진행하려면 최소 4개 이상의 단어가 필요합니다.');
+                        return;
+                    }
+                    const shuffled = [...this.words].sort(() => Math.random() - 0.5);
+                    this.quizQuestions = shuffled.slice(0, Math.min(5, shuffled.length));
+
+                    this.quizState = {
+                        active: true,
+                        finished: false,
+                        currentIndex: 0,
+                        total: this.quizQuestions.length,
+                        score: 0,
+                        correctCount: 0,
+                        options: [],
+                        answered: false,
+                        selectedAnswer: null,
+                        spellingInput: ''
+                    };
+
+                    this.setupQuizQuestion();
+                },
+
+                get currentQuizQuestion() {
+                    return this.quizQuestions ? this.quizQuestions[this.quizState.currentIndex] : null;
+                },
+
+                setupQuizQuestion() {
+                    this.quizState.answered = false;
+                    this.quizState.selectedAnswer = null;
+                    this.quizState.spellingInput = '';
+
+                    const q = this.currentQuizQuestion;
+                    if (!q) return;
+
+                    if (this.quizMode === 'mc') {
+                        const wrongMeanings = this.words
+                            .filter(w => w.id !== q.id)
+                            .map(w => w.meaning)
+                            .sort(() => Math.random() - 0.5)
+                            .slice(0, 3);
+                        this.quizState.options = [q.meaning, ...wrongMeanings].sort(() => Math.random() - 0.5);
+                    }
+                },
+
+                submitQuizAnswer(option) {
+                    if (this.quizState.answered) return;
+                    this.quizState.answered = true;
+                    this.quizState.selectedAnswer = option;
+
+                    const correct = option === this.currentQuizQuestion.meaning;
+                    if (correct) {
+                        this.quizState.score += 20;
+                        this.quizState.correctCount++;
+                    }
+                    this.incrementReview(this.currentQuizQuestion);
+                },
+
+                submitSpellingAnswer() {
+                    if (this.quizState.answered) return;
+                    this.quizState.answered = true;
+
+                    const correct = this.quizState.spellingInput.trim().toLowerCase() === this.currentQuizQuestion.term.toLowerCase();
+                    if (correct) {
+                        this.quizState.score += 20;
+                        this.quizState.correctCount++;
+                    }
+                    this.incrementReview(this.currentQuizQuestion);
+                },
+
+                nextQuizQuestion() {
+                    if (this.quizState.currentIndex + 1 < this.quizState.total) {
+                        this.quizState.currentIndex++;
+                        this.setupQuizQuestion();
+                    } else {
+                        this.quizState.active = false;
+                        this.quizState.finished = true;
+                        confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+                    }
+                },
+
+                // --- MATCHING GAME ---
+                startMatchGame() {
+                    this.activeTab = 'match';
+                    this.matchGame.active = false;
+                    this.matchGame.finished = false;
+                },
+
+                startMatchGameSession() {
+                    if (this.words.length < 6) {
+                        alert('짝맞추기 게임을 시작하려면 최소 6개 이상의 단어가 필요합니다.');
+                        return;
+                    }
+
+                    const selected = [...this.words].sort(() => Math.random() - 0.5).slice(0, 6);
+                    let cards = [];
+
+                    selected.forEach(w => {
+                        cards.push({ id: w.id, text: w.term, type: 'term', matched: false, selected: false });
+                        cards.push({ id: w.id, text: w.meaning, type: 'meaning', matched: false, selected: false });
+                    });
+
+                    cards.sort(() => Math.random() - 0.5);
+
+                    this.matchGame = {
+                        active: true,
+                        finished: false,
+                        cards: cards,
+                        selectedCards: [],
+                        timer: 0,
+                        interval: null,
+                        pairsLeft: 6
+                    };
+
+                    clearInterval(this.matchGame.interval);
+                    this.matchGame.interval = setInterval(() => {
+                        this.matchGame.timer++;
+                    }, 1000);
+                },
+
+                selectMatchCard(card) {
+                    if (card.selected || card.matched || this.matchGame.selectedCards.length >= 2) return;
+
+                    card.selected = true;
+                    this.matchGame.selectedCards.push(card);
+
+                    if (this.matchGame.selectedCards.length === 2) {
+                        const [first, second] = this.matchGame.selectedCards;
+                        if (first.id === second.id && first.type !== second.type) {
+                            // Correct Match
+                            setTimeout(() => {
+                                first.matched = true;
+                                second.matched = true;
+                                first.selected = false;
+                                second.selected = false;
+                                this.matchGame.selectedCards = [];
+                                this.matchGame.pairsLeft--;
+
+                                if (this.matchGame.pairsLeft === 0) {
+                                    clearInterval(this.matchGame.interval);
+                                    this.matchGame.active = false;
+                                    this.matchGame.finished = true;
+                                    confetti({ particleCount: 120, spread: 80, origin: { y: 0.6 } });
+                                }
+                            }, 300);
+                        } else {
+                            // Incorrect Match
+                            setTimeout(() => {
+                                first.selected = false;
+                                second.selected = false;
+                                this.matchGame.selectedCards = [];
+                            }, 700);
+                        }
+                    }
+                },
+
+                // --- DATA BACKUP & EXPORT ---
+                exportData() {
+                    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(this.words, null, 2));
+                    const downloadAnchor = document.createElement('a');
+                    downloadAnchor.setAttribute("href", dataStr);
+                    downloadAnchor.setAttribute("download", `vocaboost_backup_${new Date().toISOString().slice(0,10)}.json`);
+                    document.body.appendChild(downloadAnchor);
+                    downloadAnchor.click();
+                    downloadAnchor.remove();
+                    this.showToast('단어장 백업 파일이 다운로드되었습니다.');
+                },
+
+                importData(event) {
+                    const file = event.target.files[0];
+                    if (!file) return;
+
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        try {
+                            const imported = JSON.parse(e.target.result);
+                            if (Array.isArray(imported)) {
+                                this.words = imported;
+                                this.saveToStorage();
+                                this.showToast('단어 데이터를 성공적으로 가져왔습니다.');
+                            } else {
+                                alert('올바르지 않은 JSON 파일 형식입니다.');
+                            }
+                        } catch (err) {
+                            alert('파일을 읽는 중 오류가 발생했습니다.');
+                        }
+                    };
+                    reader.readAsText(file);
+                },
+
+                resetData() {
+                    if (confirm('기본 예시 단어 데이터로 초기화하시겠습니까? (기존 추가 단어는 삭제됩니다)')) {
+                        this.words = DEFAULT_VOCAB;
+                        this.saveToStorage();
+                        this.showToast('기본 데이터로 초기화되었습니다.');
+                    }
+                }
+            };
+        }
+    </script>
+</body>
+</html>
