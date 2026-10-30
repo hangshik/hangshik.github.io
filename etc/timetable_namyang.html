@@ -208,7 +208,7 @@
             100% { border-color: #fd7e14; }
         }
 
-th, td { 
+        th, td { 
             display: flex; align-items: center; justify-content: center;
             flex: 1; border: 1px solid #aaa; 
             font-size: var(--font-size-huge); 
@@ -570,11 +570,12 @@ th, td {
             <div class="nav-item admin-only" onclick="switchTab('tab-weekly', this)">📅 요일별 시간표</div>
             <div class="nav-item admin-only" onclick="switchTab('tab-schedule', this)">⏰ 교시 시간대</div>
             <div class="nav-item admin-only" onclick="switchTab('tab-subjects', this)">📚 과목 목록 관리</div>
+            <div class="nav-item admin-only" onclick="switchTab('tab-date-option', this)">📅 날짜 이동 옵션</div>
             <button class="logout-btn" onclick="logout()">🔒 인증 해제</button>
         </div>
 
         <div class="settings-content">
-            <!-- 탭 1: 기본 설정 -->
+            <!-- 탭 1: 시간표 초기화 -->
             <div id="tab-general" class="tab-panel active">
                 <div class="section-title">당일 시간표 초기화</div>
                 <button class="reset-today-btn" onclick="resetTodayTimetable()">↺ 오늘 수정했던 시간표 원래대로 복구</button>
@@ -621,7 +622,7 @@ th, td {
                 <button class="save-btn" onclick="saveScheduleTimes()">교시 시간대 저장</button>
             </div>
 
-            <!-- 탭 4: 학년별/방과후 과목 목록 설정 (Supabase 연동) -->
+            <!-- 탭 4: 과목 목록 관리 (Supabase 연동) -->
             <div id="tab-subjects" class="tab-panel">
                 <div class="section-title">📚 학년 및 방과후 별 수정 과목 선택 버튼 설정 (Supabase 데이터베이스 연동)</div>
                 <p style="font-size: 0.9rem; color: #666; margin-bottom: 15px;">각 항목에 쉼표(,)로 구분하여 빠르게 선택할 과목들을 입력하세요.</p>
@@ -645,6 +646,18 @@ th, td {
 
                 <button class="save-btn" onclick="saveSubjectSettings()">과목 목록 저장</button>
             </div>
+
+            <!-- 탭 5: 날짜 이동 옵션 -->
+            <div id="tab-date-option" class="tab-panel">
+                <div class="section-title">📅 날짜 이동 옵션 설정</div>
+                <div style="margin-bottom: 25px; background: #f8f9fa; padding: 20px; border-radius: 12px; border: 1px solid #e9ecef;">
+                    <label style="display: flex; align-items: center; gap: 12px; font-weight: bold; cursor: pointer; font-size: 1.1rem; color: var(--dark-blue);">
+                        <input type="checkbox" id="skip-weekend-checkbox" onchange="toggleSkipWeekend(this.checked)" style="width: 22px; height: 22px; cursor: pointer;">
+                        날짜 이동 시 주말(토, 일) 제외하기
+                    </label>
+                    <p style="font-size: 0.95rem; color: #666; margin-top: 8px; margin-left: 34px;">화살표 버튼이나 스와이프로 날짜 이동 시 주말을 건너뛰고 금요일 다음 바로 월요일로 이동합니다.</p>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -664,6 +677,16 @@ th, td {
     let mouseTimer;
 
     let currentViewDate = new Date();
+
+    // 📅 날짜 이동 시 주말 제외 설정 (기본값: true / 주말 제외)
+    let skipWeekend = localStorage.getItem('timetable_skip_weekend') !== null 
+        ? localStorage.getItem('timetable_skip_weekend') === 'true' 
+        : true;
+
+    function toggleSkipWeekend(checked) {
+        skipWeekend = checked;
+        localStorage.setItem('timetable_skip_weekend', checked);
+    }
 
     // 🎨 선택 가능한 과목 강조 테마 색상 정의
     const HIGHLIGHT_COLORS = [
@@ -729,7 +752,10 @@ th, td {
     }
 
     function changeDate(days) {
-        currentViewDate.setDate(currentViewDate.getDate() + days);
+        do {
+            currentViewDate.setDate(currentViewDate.getDate() + days);
+        } while (skipWeekend && (currentViewDate.getDay() === 0 || currentViewDate.getDay() === 6));
+
         updateTime();
         loadTimetableFromSupabase();
     }
@@ -1195,6 +1221,10 @@ th, td {
     function openSettingsModalByAuth(authLevel) {
         document.getElementById('settings-modal').style.display = 'block';
         document.getElementById('overlay').style.display = 'block';
+
+        // 주말 제외 체크박스 상태 업데이트
+        const skipCb = document.getElementById('skip-weekend-checkbox');
+        if (skipCb) skipCb.checked = skipWeekend;
 
         const adminElements = document.querySelectorAll('.admin-only');
         if (authLevel === 'FULL_ADMIN') {
