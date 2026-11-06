@@ -332,6 +332,12 @@
         .event-block:hover { filter: brightness(0.95); }
         .event-block:active { transform: scale(0.99); }
         
+        /* 완료된 일정 취소선 스타일 */
+        .event-block.completed {
+            text-decoration: line-through;
+            opacity: 0.6;
+        }
+
         .event-block.clip-start { border-top-left-radius: 0; border-bottom-left-radius: 0; }
         .event-block.clip-end { border-top-right-radius: 0; border-bottom-right-radius: 0; }
 
@@ -478,6 +484,21 @@
 
         .day-event-title { font-size: 0.825rem; font-weight: 500; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
+        /* 완결된 목록 아이템 텍스트 취소선 */
+        .day-event-title.completed {
+            text-decoration: line-through;
+            color: var(--text-muted);
+        }
+
+        /* 체크박스 커스텀 스타일 */
+        .event-checkbox {
+            width: 1.1rem;
+            height: 1.1rem;
+            cursor: pointer;
+            accent-color: var(--primary);
+            flex-shrink: 0;
+        }
+
         /* 모바일 날짜 클릭용 일정 추가 버튼: PC에서는 표시하지 않음 */
         .mobile-day-add-btn { display: none; }
         @media (max-width: 640px) {
@@ -575,7 +596,13 @@
             <input type="hidden" id="eventId">
             
             <div class="form-group">
-                <label class="form-label">일정 제목</label>
+                <div class="form-label" style="display: flex; justify-content: space-between; align-items: center;">
+                    <span>일정 제목</span>
+                    <label class="radio-label" style="margin: 0;">
+                        <input type="checkbox" id="eventCompleted" class="event-checkbox">
+                        <span>완료 처리</span>
+                    </label>
+                </div>
                 <input type="text" id="eventTitle" placeholder="제목 추가" class="form-control">
             </div>
             
@@ -660,14 +687,14 @@
             </div>
 
             <!-- 조회 기간 설정과 시작일, 종료일을 모두 한 줄로 배치 -->
-<div class="form-group" style="background: var(--bg-panel); padding: 0.45rem 0.6rem; border-radius: var(--radius-md); border: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between; flex-wrap: nowrap;">
-    <span style="font-size: 0.8rem; font-weight: bold; color: var(--text-main); white-space: nowrap; flex-shrink: 0;">조회 기간 설정</span>
-    <div style="display: flex; gap: 10px; align-items: center;">
-        <input type="date" id="filterStartDate" class="form-control" onclick="this.showPicker()" onchange="renderAllEventsList()" style="padding: 0.3rem 0.35rem; font-size: 0.75rem !important;">
-        <span style="font-size:0.8rem; font-weight:bold; flex-shrink: 0;">~</span>
-        <input type="date" id="filterEndDate" class="form-control" onclick="this.showPicker()" onchange="renderAllEventsList()" style="padding: 0.3rem 0.35rem; font-size: 0.75rem !important;">
-    </div>
-</div>
+            <div class="form-group" style="background: var(--bg-panel); padding: 0.45rem 0.6rem; border-radius: var(--radius-md); border: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between; flex-wrap: nowrap;">
+                <span style="font-size: 0.8rem; font-weight: bold; color: var(--text-main); white-space: nowrap; flex-shrink: 0;">조회 기간 설정</span>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <input type="date" id="filterStartDate" class="form-control" onclick="this.showPicker()" onchange="renderAllEventsList()" style="padding: 0.3rem 0.35rem; font-size: 0.75rem !important;">
+                    <span style="font-size:0.8rem; font-weight:bold; flex-shrink: 0;">~</span>
+                    <input type="date" id="filterEndDate" class="form-control" onclick="this.showPicker()" onchange="renderAllEventsList()" style="padding: 0.3rem 0.35rem; font-size: 0.75rem !important;">
+                </div>
+            </div>
 
             <!-- 일정 목록 출력 영역 -->
             <ul id="allEventsList" class="day-event-list" style="max-height: 45vh; overflow-y: auto; margin-top: 0.75rem;"></ul>
@@ -1158,7 +1185,8 @@
                 if (error) throw error;
                 events = (data || []).map(e => ({
                     ...e,
-                    order: (e.order !== undefined && e.order !== null) ? Number(e.order) : null
+                    order: (e.order !== undefined && e.order !== null) ? Number(e.order) : null,
+                    completed: !!e.completed
                 }));
                 drawCalendar();
             } catch (err) { showToast('일정을 불러오는 데 실패했습니다.'); }
@@ -1172,6 +1200,7 @@
             const recurrence = document.getElementById('eventRecurrence').value;
             let color = document.getElementById('eventColor').value;
             const memo = document.getElementById('eventMemo').value;
+            const completed = document.getElementById('eventCompleted').checked;
             const id = document.getElementById('eventId').value || Date.now().toString();
 
             if (!title || !startDate || !endDate) return showToast('제목과 날짜를 모두 입력해주세요.');
@@ -1180,7 +1209,7 @@
 
             const existing = events.find(e => e.id === id);
             const eventObj = { 
-                id, title, startDate, endDate, recurrence, color, memo,
+                id, title, startDate, endDate, recurrence, color, memo, completed,
                 order: existing ? existing.order : null
             };
             const btns = document.querySelectorAll('.btn-save-event');
@@ -1196,6 +1225,36 @@
                 closeModal('eventModal'); drawCalendar();
             } catch (err) { showToast('저장에 실패했습니다.'); }
             finally { btns.forEach(btn => { btn.disabled = false; btn.innerText = '저장'; }); }
+        }
+
+        /* 체크박스 클릭으로 빠르게 완결 상태 토글하는 함수 */
+        async function toggleEventCompleted(id, isCompleted) {
+            const evt = events.find(e => e.id === id);
+            if (!evt) return;
+
+            const updatedObj = { ...evt, completed: isCompleted };
+            try {
+                const { error } = await supabaseClient.from('Calendar').upsert(updatedObj);
+                if (error) throw error;
+
+                evt.completed = isCompleted;
+                drawCalendar();
+
+                // 모달이 열려있는 상태라면 목록을 다시 그리기
+                const dayViewModal = document.getElementById('dayViewModal');
+                if (dayViewModal && !dayViewModal.classList.contains('hidden') && currentDayViewDate) {
+                    openDayView(currentDayViewDate);
+                }
+
+                const allEventsModal = document.getElementById('allEventsModal');
+                if (allEventsModal && !allEventsModal.classList.contains('hidden')) {
+                    renderAllEventsList();
+                }
+
+                showToast(isCompleted ? '일정이 완료되었습니다.' : '완료가 취소되었습니다.');
+            } catch (err) {
+                showToast('완료 상태 변경에 실패했습니다.');
+            }
         }
 
         async function deleteEvent() {
@@ -1394,6 +1453,7 @@
 
                     let ml = span.isStart ? 2 : 0; let mr = span.isEnd ? 2 : 0;
                     let classes = `${span.evt.color}`;
+                    if (span.evt.completed) classes += ' completed';
                     if(!span.isStart) classes += ' clip-start';
                     if(!span.isEnd) classes += ' clip-end';
 
@@ -1618,10 +1678,11 @@
                 return `
                     <li class="day-event-item" style="justify-content: space-between; align-items: center;" onclick="closeModal('allEventsModal', false, true); openEventModal('${evt.id}')">
                         <div style="display:flex; align-items:center; gap:0.75rem; overflow:hidden; flex:1;">
+                            <input type="checkbox" class="event-checkbox" ${evt.completed ? 'checked' : ''} onclick="event.stopPropagation(); toggleEventCompleted('${evt.id}', this.checked)">
                             <div class="day-event-color-large ${evt.color}"></div>
                             <div style="display:flex; align-items:center; gap:0.6rem; overflow:hidden; flex:1; white-space:nowrap;">
                                 <span class="${textColorClass}" style="font-weight:bold; font-size:0.85rem; flex-shrink:0;">${formattedDate}</span>
-                                <span class="day-event-title" style="font-weight:500;">${modalTitle}</span>
+                                <span class="day-event-title ${evt.completed ? 'completed' : ''}" style="font-weight:500;">${modalTitle}</span>
                             </div>
                         </div>
                         <i class="fa-solid fa-chevron-right" style="color:var(--text-muted); font-size:0.75rem; flex-shrink:0; margin-left:0.5rem;"></i>
@@ -1638,7 +1699,7 @@
             }
 
             let csvContent = '\uFEFF'; 
-            csvContent += '날짜,시작일,종료일,일정제목,메모,반복설정\n';
+            csvContent += '날짜,시작일,종료일,일정제목,메모,완료여부,반복설정\n';
 
             filtered.forEach(evt => {
                 const displayDate = evt.computedDateStr;
@@ -1646,9 +1707,10 @@
                 const eDate = evt.endDate || '';
                 const title = `"${(evt.title || '').replace(/"/g, '""')}"`;
                 const memo = `"${(evt.memo || '').replace(/"/g, '""')}"`;
+                const isDone = evt.completed ? '완료' : '미완료';
                 const recurrence = `"${evt.recurrence || 'none'}"`;
                 
-                csvContent += `${displayDate},${sDate},${eDate},${title},${memo},${recurrence}\n`;
+                csvContent += `${displayDate},${sDate},${eDate},${title},${memo},${isDone},${recurrence}\n`;
             });
 
             const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -1733,8 +1795,9 @@
                             onclick="editEventFromDayView('${evt.id}')">
                             <div style="display:flex; align-items:center; gap:0.6rem; overflow:hidden; flex:1;">
                                 <i class="fa-solid fa-grip-lines" style="color:var(--text-muted); font-size:0.85rem; cursor:grab; flex-shrink:0;"></i>
+                                <input type="checkbox" class="event-checkbox" ${evt.completed ? 'checked' : ''} onclick="event.stopPropagation(); toggleEventCompleted('${evt.id}', this.checked)">
                                 <div class="day-event-color ${evt.color}"></div>
-                                <div class="day-event-title">${modalTitle}</div>
+                                <div class="day-event-title ${evt.completed ? 'completed' : ''}">${modalTitle}</div>
                             </div>
                             <button class="btn-icon" title="수정" style="padding:0.35rem; font-size:0.85rem; flex-shrink:0;" onclick="event.stopPropagation(); editEventFromDayView('${evt.id}')">
                                 <i class="fa-solid fa-pen"></i>
@@ -1841,6 +1904,7 @@
                             recurrence: evt.recurrence,
                             color: evt.color,
                             memo: evt.memo,
+                            completed: evt.completed,
                             order: index
                         });
                     }
@@ -1975,23 +2039,31 @@
             const modalTitle = document.getElementById('eventModalTitle');
             const startInput = document.getElementById('eventStartDate');
             const endInput = document.getElementById('eventEndDate');
+            const completedCheckbox = document.getElementById('eventCompleted');
+            const isEdit = !!id;
 
-            if (id) {
+            if (isEdit) {
                 const evt = events.find(e => e.id === id); if(!evt) return;
                 modalTitle.innerText = '일정 수정'; modalTitle.style.color = '#2563eb';
-                document.getElementById('eventId').value = evt.id; document.getElementById('eventTitle').value = evt.title;
+                document.getElementById('eventId').value = evt.id; 
+                document.getElementById('eventTitle').value = evt.title;
+                completedCheckbox.checked = !!evt.completed;
                 startInput.value = evt.startDate; 
                 endInput.value = evt.endDate;
-                document.getElementById('eventRecurrence').value = evt.recurrence; document.getElementById('eventMemo').value = evt.memo || '';
+                document.getElementById('eventRecurrence').value = evt.recurrence; 
+                document.getElementById('eventMemo').value = evt.memo || '';
                 selectColor(evt.recurrence !== 'none' ? 'bg-purple-500' : evt.color);
                 document.getElementById('deleteEventBtn').classList.remove('hidden');
             } else {
                 modalTitle.innerText = '일정 추가'; modalTitle.style.color = '#111827';
-                document.getElementById('eventId').value = ''; document.getElementById('eventTitle').value = '';
+                document.getElementById('eventId').value = ''; 
+                document.getElementById('eventTitle').value = '';
+                completedCheckbox.checked = false;
                 const dateStr = selectedDate || getTodayStr();
                 startInput.value = dateStr; 
                 endInput.value = dateStr;
-                document.getElementById('eventRecurrence').value = 'none'; document.getElementById('eventMemo').value = '';
+                document.getElementById('eventRecurrence').value = 'none'; 
+                document.getElementById('eventMemo').value = '';
                 selectColor('bg-blue-500'); document.getElementById('deleteEventBtn').classList.add('hidden');
             }
 
@@ -1999,10 +2071,13 @@
             updateLunarDisplay();
             openModalUI('eventModal');
 
-            setTimeout(() => {
-                const titleInput = document.getElementById('eventTitle');
-                if (titleInput) { titleInput.focus(); titleInput.select(); }
-            }, 50);
+            // 일정 추가 창일 때만 제목 포커스 활성화
+            if (!isEdit) {
+                setTimeout(() => {
+                    const titleInput = document.getElementById('eventTitle');
+                    if (titleInput) { titleInput.focus(); titleInput.select(); }
+                }, 50);
+            }
         }
 
         function renderColorPicker() {
@@ -2089,7 +2164,7 @@
                             <div style="display:flex; align-items:center; gap:0.6rem; overflow:hidden;">
                                 <div class="day-event-color ${e.color}"></div>
                                 <div style="font-weight:bold; font-size:0.825rem; color:var(--primary); min-width:95px; flex-shrink:0;">${item.formattedDateLabel}</div>
-                                <div style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:0.825rem; font-weight:500;">${e.title}</div>
+                                <div class="${e.completed ? 'completed' : ''}" style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:0.825rem; font-weight:500;">${e.title}</div>
                             </div>
                             <i class="fa-solid fa-chevron-right" style="color:var(--text-muted); font-size:0.75rem; flex-shrink:0;"></i>
                         </li>
@@ -2114,7 +2189,7 @@
                             <div style="display:flex; align-items:center; gap:0.5rem; overflow:hidden;">
                                 <div class="day-event-color ${item.color}"></div>
                                 <div style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
-                                    <div style="font-weight:bold; font-size:0.8rem;">${item.title}</div>
+                                    <div style="font-weight:bold; font-size:0.8rem;" class="${item.completed ? 'completed' : ''}">${item.title}</div>
                                     <div style="font-size:0.7rem; color:var(--text-muted);">${item.startDate} ~ ${item.endDate} (${remainingHours}시간 남음)</div>
                                 </div>
                             </div>
