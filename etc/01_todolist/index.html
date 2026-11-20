@@ -347,18 +347,24 @@
       opacity: 0.8;
     }
 
-/* 블록 선택 시에도 적용된 글자 색상을 유지하며 배경 하이라이트 반전 */
+/* 검은색 포함 모든 글자가 블록 선택 시에도 원래 색상을 유지하며 배경만 반전되도록 설정 */
+    .todo-editable-input::selection,
     .todo-editable-input ::selection,
+    .editable-input::selection,
     .editable-input ::selection,
+    .todo-text::selection,
     .todo-text ::selection {
-      background-color: rgba(59, 130, 246, 0.18);
+      background-color: rgba(59, 130, 246, 0.2);
       color: currentColor;
     }
 
     .todo-editable-input::-moz-selection,
+    .todo-editable-input ::-moz-selection,
     .editable-input::-moz-selection,
-    .todo-text::-moz-selection {
-      background-color: rgba(59, 130, 246, 0.18);
+    .editable-input ::-moz-selection,
+    .todo-text::-moz-selection,
+    .todo-text ::-moz-selection {
+      background-color: rgba(59, 130, 246, 0.2);
       color: currentColor;
     }
 
