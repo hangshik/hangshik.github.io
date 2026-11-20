@@ -347,6 +347,21 @@
       opacity: 0.8;
     }
 
+/* 블록 선택 시에도 적용된 글자 색상을 유지하며 배경 하이라이트 반전 */
+    .todo-editable-input ::selection,
+    .editable-input ::selection,
+    .todo-text ::selection {
+      background-color: rgba(59, 130, 246, 0.18);
+      color: currentColor;
+    }
+
+    .todo-editable-input::-moz-selection,
+    .editable-input::-moz-selection,
+    .todo-text::-moz-selection {
+      background-color: rgba(59, 130, 246, 0.18);
+      color: currentColor;
+    }
+
     /* 이미지 래퍼 (PC에서 크기 조절 및 삭제) */
     .img-wrapper {
       position: relative;
@@ -1260,22 +1275,54 @@
       }
     }
 
-    // 공통 WYSIWYG 서식 툴바 생성 함수
+// 공통 WYSIWYG 서식 툴바 생성 함수
     function createStyleToolbar(container, editableTarget, onDeleteCallback) {
       container.innerHTML = "";
 
+      // 현재 선택 영역(Range)을 저장하고 복원하는 헬퍼 함수
+      const applyFormat = (command, value = null) => {
+        const sel = window.getSelection();
+        let savedRange = null;
+        if (sel.rangeCount > 0) {
+          savedRange = sel.getRangeAt(0).cloneRange();
+        }
+
+        editableTarget.focus();
+
+        if (savedRange) {
+          sel.removeAllRanges();
+          sel.addRange(savedRange);
+        }
+
+        document.execCommand('styleWithCSS', false, true);
+        document.execCommand(command, false, value);
+
+        // 색상 변경 시 브라우저의 블록 선택 하이라이트에 가려지지 않도록 선택 해제 후 끝으로 커서 이동
+        if (command === 'foreColor' && sel.rangeCount > 0) {
+          const currentRange = sel.getRangeAt(0);
+          // currentRange.collapse(false);
+          sel.removeAllRanges();
+          sel.addRange(currentRange);
+        }
+
+        // Undo 히스토리 및 입력 상태 즉시 반영
+        editableTarget.dispatchEvent(new Event("input", { bubbles: true }));
+      };
+
       const boldBtn = document.createElement("button");
+      boldBtn.type = "button";
       boldBtn.className = "btn-style";
       boldBtn.textContent = "B";
       boldBtn.title = "선택한 글자 굵게";
       
       const applyBold = (evt) => {
         evt.preventDefault();
-        document.execCommand('bold', false, null);
+        evt.stopPropagation();
+        applyFormat('bold');
       };
       
       boldBtn.addEventListener("mousedown", applyBold);
-      boldBtn.addEventListener("touchstart", applyBold);
+      boldBtn.addEventListener("touchstart", applyBold, { passive: false });
 
       container.appendChild(boldBtn);
 
@@ -1288,22 +1335,25 @@
         
         const applyColor = (evt) => {
           evt.preventDefault();
-          document.execCommand('foreColor', false, col);
+          evt.stopPropagation();
+          applyFormat('foreColor', col);
         };
 
         dot.addEventListener("mousedown", applyColor);
-        dot.addEventListener("touchstart", applyColor);
+        dot.addEventListener("touchstart", applyColor, { passive: false });
 
         container.appendChild(dot);
       });
 
       const deleteBtn = document.createElement("button");
+      deleteBtn.type = "button";
       deleteBtn.className = "btn-toolbar-delete";
       deleteBtn.innerHTML = `<i class="ph ph-trash"></i>`;
       deleteBtn.title = "삭제";
 
       const handleDelete = (evt) => {
         evt.preventDefault();
+        evt.stopPropagation();
         if (onDeleteCallback) {
           onDeleteCallback();
         } else {
@@ -1313,7 +1363,7 @@
       };
 
       deleteBtn.addEventListener("mousedown", handleDelete);
-      deleteBtn.addEventListener("touchstart", handleDelete);
+      deleteBtn.addEventListener("touchstart", handleDelete, { passive: false });
 
       container.appendChild(deleteBtn);
     }
