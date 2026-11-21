@@ -5,8 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>To Do List</title>
 
-
-
   <!-- PWA 및 모바일 전체화면 설정 -->
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#2563eb">
@@ -17,11 +15,10 @@
   <meta name="apple-mobile-web-app-title" content="todolist">
   <link rel="apple-touch-icon" href="icon.png">
 
-    <!-- 아이콘 및 파비콘 경로 -->
-    <link rel="icon" type="image/png" href="icon2.png">
-    <link rel="apple-touch-icon" href="icon.png">
+  <!-- 아이콘 및 파비콘 경로 -->
+  <link rel="icon" type="image/png" href="icon2.png">
+  <link rel="apple-touch-icon" href="icon.png">
 
-  
   <!-- Icons & Supabase -->
   <script src="https://unpkg.com/@phosphor-icons/web"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -30,6 +27,10 @@
     /* ==========================================================================
        1. Base & Global Styles
        ========================================================================== */
+    :root {
+      --todo-font-size: 14px;
+    }
+
     * {
       box-sizing: border-box;
       margin: 0;
@@ -309,7 +310,7 @@
     .todo-editable-input {
       flex: 1;
       min-height: 38px;
-      font-size: 14px;
+      font-size: var(--todo-font-size) !important;
       padding: 8px 12px;
       line-height: 1.4;
       border: 1px solid #d1d5db;
@@ -347,7 +348,7 @@
       opacity: 0.8;
     }
 
-/* 검은색 포함 모든 글자가 블록 선택 시에도 원래 색상을 유지하며 배경만 반전되도록 설정 */
+    /* 검은색 포함 모든 글자가 블록 선택 시에도 원래 색상을 유지하며 배경만 반전되도록 설정 */
     .todo-editable-input::selection,
     .todo-editable-input ::selection,
     .editable-input::selection,
@@ -539,7 +540,12 @@
       transition: background-color 0.15s;
     }
     .todo-item:hover { background-color: rgba(243, 244, 246, 0.7); }
-    .todo-item-divider { height: 20px; }
+
+    /* 구분선 세로 가운데 정렬 */
+    .todo-item-divider {
+      height: 20px;
+      align-items: center;
+    }
 
     .todo-checkbox-btn {
       padding-top: 2px;
@@ -557,7 +563,7 @@
 
     .todo-text {
       display: inline-block;
-      font-size: 14px;
+      font-size: var(--todo-font-size) !important;
       white-space: pre-wrap;
       word-break: break-words;
       cursor: pointer;
@@ -601,7 +607,7 @@
       padding: 8px 12px;
       border: 1px solid #3b82f6;
       border-radius: 8px;
-      font-size: 14px;
+      font-size: var(--todo-font-size) !important;
       outline: none;
       background-color: #ffffff;
       box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
@@ -699,6 +705,43 @@
       font-weight: 500;
     }
 
+    /* 글자 크기 숫자 입력 그룹 */
+    .font-size-input-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .font-size-input-wrapper {
+      position: relative;
+      flex: 1;
+      display: flex;
+      align-items: center;
+    }
+
+    .font-size-number-input {
+      width: 100%;
+      padding: 8px 34px 8px 12px;
+      border: 1px solid #d1d5db;
+      border-radius: 12px;
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+
+    .font-size-number-input:focus {
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3);
+    }
+
+    .font-size-unit {
+      position: absolute;
+      right: 12px;
+      font-size: 13px;
+      color: #6b7280;
+      pointer-events: none;
+    }
+
     .modal-tab-list {
       max-height: 192px;
       overflow-y: auto;
@@ -782,16 +825,6 @@
         inputmode="numeric"
         pattern="[0-9]*"
       />
-      
-      <!-- 
-      입력모드를 숫자로 수정함. 잘 안되는 경우 아래 코드로 다시 수정할 것
-      <input 
-        type="password" 
-        id="auth-password-input" 
-        placeholder="비밀번호 입력" 
-        class="input-field input-auth"
-      /> -->
-
 
       <p id="auth-error-msg" class="error-msg is-hidden">비밀번호가 올바르지 않습니다.</p>
 
@@ -880,6 +913,27 @@
         <button id="add-modal-confirm-btn" class="btn-base btn-primary" style="flex-shrink: 0;">
           추가
         </button>
+      </div>
+
+      <div class="modal-tab-list-area" style="margin-bottom: 16px;">
+        <div class="modal-sub-title">글자 크기 설정 (10 ~ 40) (기본 크기 14)</div>
+        <div class="font-size-input-group">
+          <div class="font-size-input-wrapper">
+            <input 
+              type="number" 
+              id="font-size-input" 
+              min="10" 
+              max="40" 
+              step="1"
+              inputmode="numeric"
+              class="font-size-number-input"
+            />
+            <span class="font-size-unit">px</span>
+          </div>
+          <button type="button" id="font-size-apply-btn" class="btn-base btn-primary" style="flex-shrink: 0;">
+            적용
+          </button>
+        </div>
       </div>
 
       <div class="modal-tab-list-area">
@@ -972,7 +1026,7 @@
     const fullscreenImageModal = document.getElementById("fullscreen-image-modal");
     const fullscreenImg = document.getElementById("fullscreen-img");
     
-    let activeEditModeCloseCallback = null; // Used for Requirement 3 (History Back)
+    let activeEditModeCloseCallback = null;
 
     // Requirement 4: Unified Paste handler for all editable inputs
     function handlePaste(e) {
@@ -989,27 +1043,23 @@
             const reader = new FileReader();
             
             reader.onload = function (event) {
-              // Insert image element wrapped for resizing and deleting on PC
               const html = `<span class="img-wrapper" style="width: 250px; height: auto;"><img src="${event.target.result}" /><button class="pc-img-delete" contenteditable="false"><i class="ph ph-trash"></i></button></span>&nbsp;`;
               document.execCommand('insertHTML', false, html);
-              // Trigger input event to update states/undo manager
               e.target.dispatchEvent(new Event("input", { bubbles: true }));
             };
             
             reader.readAsDataURL(blob);
-            break; // Stop after first image to prevent spam
+            break;
           }
         }
       }
 
-      // If it wasn't an image, treat it as pure text and strip all formatting
       if (!hasImage) {
         const text = (e.originalEvent || e).clipboardData.getData('text/plain');
         document.execCommand('insertText', false, text);
       }
     }
 
-    // Event delegation for PC image deletion in editable areas
     function setupImageDeleteDelegation(container) {
       container.addEventListener('click', (e) => {
         const delBtn = e.target.closest('.pc-img-delete');
@@ -1024,11 +1074,8 @@
     }
     
     setupImageDeleteDelegation(todoInput);
-
-    // Attach to the main input
     todoInput.addEventListener("paste", handlePaste);
 
-    // Requirement 2: Mobile Image Maximize Logic
     function handleImageClick(e) {
       const img = e.target.tagName === 'IMG' ? e.target : (e.target.closest('.img-wrapper') ? e.target.closest('.img-wrapper').querySelector('img') : null);
       
@@ -1038,17 +1085,12 @@
       }
     }
 
-    // Attach image click delegation to the main input
     todoInput.addEventListener("click", handleImageClick);
 
-
-    // Requirement 3: History State Management for Edit Mode
     window.addEventListener('popstate', (e) => {
-      // If we popped out of the #edit hash (mobile back button pressed)
       if (window.location.hash !== "#edit" && activeEditModeCloseCallback) {
         activeEditModeCloseCallback(); 
       }
-      // Also close the fullscreen image modal if it's open during a back navigation
       if (!fullscreenImageModal.classList.contains("is-hidden")) {
         fullscreenImageModal.classList.add("is-hidden");
       }
@@ -1281,11 +1323,10 @@
       }
     }
 
-// 공통 WYSIWYG 서식 툴바 생성 함수
+    // 공통 WYSIWYG 서식 툴바 생성 함수
     function createStyleToolbar(container, editableTarget, onDeleteCallback) {
       container.innerHTML = "";
 
-      // 현재 선택 영역(Range)을 저장하고 복원하는 헬퍼 함수
       const applyFormat = (command, value = null) => {
         const sel = window.getSelection();
         let savedRange = null;
@@ -1303,15 +1344,12 @@
         document.execCommand('styleWithCSS', false, true);
         document.execCommand(command, false, value);
 
-        // 색상 변경 시 브라우저의 블록 선택 하이라이트에 가려지지 않도록 선택 해제 후 끝으로 커서 이동
         if (command === 'foreColor' && sel.rangeCount > 0) {
           const currentRange = sel.getRangeAt(0);
-          // currentRange.collapse(false);
           sel.removeAllRanges();
           sel.addRange(currentRange);
         }
 
-        // Undo 히스토리 및 입력 상태 즉시 반영
         editableTarget.dispatchEvent(new Event("input", { bubbles: true }));
       };
 
@@ -1670,7 +1708,7 @@
       tabNameInput.value = "";
       addModal.classList.remove("is-hidden");
       renderModalTabList();
-      tabNameInput.focus();
+      // 새 메뉴 이름 입력창 자동 활성화(focus) 제거
     }
 
     function closeAddModal() {
@@ -1844,7 +1882,6 @@
         itemEl.addEventListener("touchstart", (e) => {
           if (e.target.closest("button") || e.target.closest("textarea") || e.target.closest("input") || e.target.closest(".editable-input")) return;
 
-          const touch = e.touches[0];
           draggedTodoId = item.id;
 
           touchStartTimer = setTimeout(() => {
@@ -1961,7 +1998,6 @@
             editableInput.contentEditable = "true";
             editableInput.innerHTML = item.text;
             
-            // 기존 이미지들을 img-wrapper로 감싸기 (PC 크기조절/삭제 기능 지원)
             editableInput.querySelectorAll("img").forEach(img => {
               if (!img.closest(".img-wrapper")) {
                 const wrapper = document.createElement("span");
@@ -1983,11 +2019,8 @@
               }
             });
 
-            // Requirement 4: Attach universal paste handler
             editableInput.addEventListener("paste", handlePaste);
-            // Requirement 2: Attach image click handler (Mobile Maximize)
             editableInput.addEventListener("click", handleImageClick);
-            // PC Delete Image delegation
             setupImageDeleteDelegation(editableInput);
 
             const styleToolbar = document.createElement("div");
@@ -1995,7 +2028,6 @@
 
             let isSaved = false;
 
-            // Requirement 3: Push state to prevent immediate app exit via mobile back button
             if (window.location.hash !== "#edit") {
               window.history.pushState({ editMode: true }, "", "#edit");
             }
@@ -2032,7 +2064,6 @@
               
               activeEditModeCloseCallback = null;
 
-              // Pop the back button state safely if closed naturally
               if (window.location.hash === "#edit") {
                 window.history.back();
               }
@@ -2049,7 +2080,6 @@
               }
             };
 
-            // Used globally by the `popstate` event to save text and close
             activeEditModeCloseCallback = saveEdit;
 
             editableInput.addEventListener("blur", (e) => {
@@ -2108,6 +2138,37 @@
 
       await fetchTodos();
     }
+
+    // 글자 크기 숫자 입력 설정 및 저장 로직
+    const FONT_SIZE_KEY = "todo_font_size_num";
+    const fontSizeInput = document.getElementById("font-size-input");
+    const fontSizeApplyBtn = document.getElementById("font-size-apply-btn");
+
+    function applyFontSize(numVal) {
+      let parsed = parseInt(numVal, 10);
+      if (isNaN(parsed)) parsed = 14;
+      if (parsed < 10) parsed = 10;
+      if (parsed > 40) parsed = 40;
+
+      document.documentElement.style.setProperty("--todo-font-size", `${parsed}px`);
+      localStorage.setItem(FONT_SIZE_KEY, parsed);
+      fontSizeInput.value = parsed;
+    }
+
+    fontSizeApplyBtn.addEventListener("click", () => {
+      applyFontSize(fontSizeInput.value);
+    });
+
+    fontSizeInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        applyFontSize(fontSizeInput.value);
+        fontSizeInput.blur();
+      }
+    });
+
+    const savedFontSize = localStorage.getItem(FONT_SIZE_KEY) || "14";
+    applyFontSize(savedFontSize);
 
     btnRestore.addEventListener("click", openRestoreModal);
     restoreModalCloseBtn.addEventListener("click", closeRestoreModal);
